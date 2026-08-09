@@ -9,7 +9,8 @@ export const state = {
     coins: 0,
     quests: [],
     coupons: [],
-    achievements: []
+    achievements: [],
+    milestone_claims: []
   },
   workouts: [],
   dietLogs: [],
@@ -17,5 +18,7 @@ export const state = {
   weeklyStats: null,
   partnerWeeklyStats: null,
   customShopItems: [],
-  victoryRedemptions: []
+  victoryRedemptions: [],
+  isLoaded: false
 };
+

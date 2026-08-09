@@ -93,10 +93,42 @@ export function renderAppView(container) {
       </header>
 
       <main style="padding: 20px; flex: 1; text-align: center;">
-        <div style="background: #FFF0F4; border-radius: 20px; padding: 30px; margin-top: 20px; border: 2px dashed #FF9EAA;">
-          <h3 style="color: #FF6B8B; margin-bottom: 10px;">🎉 เข้าสู่ระบบสำเร็จแล้ว!</h3>
-          <p style="color: #666;">Auth Module (Phase 2) สมบูรณ์เรียบร้อย</p>
-          <p style="color: #888; font-size: 0.85rem; margin-top: 15px;">User ID: ${state.user.id}</p>
+        <div style="background: #FFF0F4; border-radius: 20px; padding: 25px; margin-top: 20px; border: 2px dashed #FF9EAA;">
+          <h3 style="color: #FF6B8B; margin-bottom: 10px;">⚡ Phase 3: State Management (Ready)</h3>
+          <p style="color: #555; margin-bottom: 15px;">สถานะการดึงข้อมูลกลาง (State Hydration) จาก Supabase</p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 15px;">
+            <div style="background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+              <div style="font-size: 1.5rem;">🪙</div>
+              <div style="font-size: 1.2rem; font-weight: bold; color: #FF9EAA;">${state.gameState.coins}</div>
+              <div style="font-size: 0.8rem; color: #888;">Coins</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+              <div style="font-size: 1.5rem;">🔥</div>
+              <div style="font-size: 1.2rem; font-weight: bold; color: #FF9EAA;">${state.gameState.streak} วัน</div>
+              <div style="font-size: 0.8rem; color: #888;">Streak</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+              <div style="font-size: 1.5rem;">🏃‍♂️</div>
+              <div style="font-size: 1.2rem; font-weight: bold; color: #FF9EAA;">${state.workouts.length}</div>
+              <div style="font-size: 0.8rem; color: #888;">Workouts</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+              <div style="font-size: 1.5rem;">🥗</div>
+              <div style="font-size: 1.2rem; font-weight: bold; color: #FF9EAA;">${state.dietLogs.length}</div>
+              <div style="font-size: 0.8rem; color: #888;">Diet Logs</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+              <div style="font-size: 1.5rem;">😴</div>
+              <div style="font-size: 1.2rem; font-weight: bold; color: #FF9EAA;">${state.sleepLogs.length}</div>
+              <div style="font-size: 0.8rem; color: #888;">Sleep Logs</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 20px; font-size: 0.85rem; color: #666;">
+            State Loaded: <span style="color: ${state.isLoaded ? 'green' : 'red'}; font-weight: bold;">${state.isLoaded ? '✅ Complete' : '⏳ Pending'}</span>
+          </div>
+          <p style="color: #aaa; font-size: 0.75rem; margin-top: 10px;">User ID: ${state.user?.id}</p>
         </div>
       </main>
     </div>
@@ -106,3 +138,4 @@ export function renderAppView(container) {
     await signOutUser();
   });
 }
+

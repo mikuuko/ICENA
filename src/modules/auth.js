@@ -1,5 +1,6 @@
 import { supabase } from '../supabase.js';
 import { state } from '../store/state.js';
+import { resetState } from '../store/loader.js';
 import { showToast } from '../ui/toast.js';
 
 // Convert simple username to internal email
@@ -86,9 +87,7 @@ export async function signOutUser() {
       showToast('ไม่สามารถออกจากระบบได้', 'error');
       return false;
     }
-    state.user = null;
-    state.profile = null;
-    state.partnerProfile = null;
+    resetState();
     showToast('ออกจากระบบแล้วค่ะ 👋', 'info');
     return true;
   } catch (err) {

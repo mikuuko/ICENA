@@ -1,6 +1,7 @@
 import { state } from './store/state.js';
 import { supabase } from './supabase.js';
 import { loadProfiles } from './modules/auth.js';
+import { loadAppData, resetState } from './store/loader.js';
 import { renderAuthScreen, renderAppView } from './ui/render.js';
 
 const appElement = document.getElementById('app');
@@ -12,11 +13,11 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   if (session && session.user) {
     state.user = session.user;
     await loadProfiles(session.user.id);
+    await loadAppData(session.user.id);
     renderAppView(appElement);
   } else {
-    state.user = null;
-    state.profile = null;
-    state.partnerProfile = null;
+    resetState();
     renderAuthScreen(appElement);
   }
 });
+
