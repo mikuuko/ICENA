@@ -1,16 +1,22 @@
 import { state } from './store/state.js';
 import { supabase } from './supabase.js';
+import { loadProfiles } from './modules/auth.js';
+import { renderAuthScreen, renderAppView } from './ui/render.js';
 
-console.log('🐱 ICENA App Initializing...');
+const appElement = document.getElementById('app');
 
-async function initApp() {
-  const appElement = document.getElementById('app');
-  appElement.innerHTML = `
-    <div style="font-family: 'Kanit', sans-serif; text-align: center; padding: 50px;">
-      <h1 style="color: #FF9EAA;">🐱 ICENA Workout & Health App</h1>
-      <p style="color: #666;">กำลังเตรียมความพร้อมระบบ...</p>
-    </div>
-  `;
-}
+// Initialize Auth Listener
+supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('🔑 Auth Event:', event);
 
-initApp();
+  if (session && session.user) {
+    state.user = session.user;
+    await loadProfiles(session.user.id);
+    renderAppView(appElement);
+  } else {
+    state.user = null;
+    state.profile = null;
+    state.partnerProfile = null;
+    renderAuthScreen(appElement);
+  }
+});
