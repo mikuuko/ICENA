@@ -4,9 +4,10 @@ import { renderWorkoutSection } from './workoutUI.js';
 import { renderDietSection } from './dietUI.js';
 import { renderSleepSection } from './sleepUI.js';
 import { renderQuestsSection } from './questsUI.js';
+import { renderShopSection } from './shopUI.js';
 
 let activeAuthTab = 'signin'; // 'signin' or 'signup'
-let activeAppTab = 'workout'; // 'workout', 'diet', 'sleep', or 'quests'
+let activeAppTab = 'workout'; // 'workout', 'diet', 'sleep', 'quests', or 'shop'
 
 // Render Auth Screen (Login / Register)
 export function renderAuthScreen(container) {
@@ -114,18 +115,21 @@ export function renderAppView(container) {
       </header>
 
       <!-- App Navigation Bar -->
-      <nav style="display: grid; grid-template-columns: repeat(4, 1fr); background: white; margin: 15px 20px 0 20px; padding: 6px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); gap: 4px;">
-        <button id="nav-workout" style="background: ${activeAppTab === 'workout' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'workout' ? 'white' : '#666'}; border: none; padding: 10px 2px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.8rem; transition: all 0.2s;">
+      <nav style="display: grid; grid-template-columns: repeat(5, 1fr); background: white; margin: 15px 15px 0 15px; padding: 5px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); gap: 2px;">
+        <button id="nav-workout" style="background: ${activeAppTab === 'workout' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'workout' ? 'white' : '#666'}; border: none; padding: 8px 2px; border-radius: 10px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.75rem; transition: all 0.2s;">
           🏃‍♂️ ออกกำลัง
         </button>
-        <button id="nav-diet" style="background: ${activeAppTab === 'diet' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'diet' ? 'white' : '#666'}; border: none; padding: 10px 2px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.8rem; transition: all 0.2s;">
+        <button id="nav-diet" style="background: ${activeAppTab === 'diet' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'diet' ? 'white' : '#666'}; border: none; padding: 8px 2px; border-radius: 10px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.75rem; transition: all 0.2s;">
           🥗 อาหาร
         </button>
-        <button id="nav-sleep" style="background: ${activeAppTab === 'sleep' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'sleep' ? 'white' : '#666'}; border: none; padding: 10px 2px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.8rem; transition: all 0.2s;">
+        <button id="nav-sleep" style="background: ${activeAppTab === 'sleep' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'sleep' ? 'white' : '#666'}; border: none; padding: 8px 2px; border-radius: 10px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.75rem; transition: all 0.2s;">
           😴 การนอน
         </button>
-        <button id="nav-quests" style="background: ${activeAppTab === 'quests' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'quests' ? 'white' : '#666'}; border: none; padding: 10px 2px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.8rem; transition: all 0.2s;">
+        <button id="nav-quests" style="background: ${activeAppTab === 'quests' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'quests' ? 'white' : '#666'}; border: none; padding: 8px 2px; border-radius: 10px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.75rem; transition: all 0.2s;">
           🏆 ภารกิจ
+        </button>
+        <button id="nav-shop" style="background: ${activeAppTab === 'shop' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'shop' ? 'white' : '#666'}; border: none; padding: 8px 2px; border-radius: 10px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.75rem; transition: all 0.2s;">
+          🛒 ร้านค้า
         </button>
       </nav>
 
@@ -160,6 +164,11 @@ export function renderAppView(container) {
     renderAppView(container);
   });
 
+  container.querySelector('#nav-shop')?.addEventListener('click', () => {
+    activeAppTab = 'shop';
+    renderAppView(container);
+  });
+
   // Render Selected Module Component
   const moduleContainer = container.querySelector('#module-container');
   if (moduleContainer) {
@@ -171,9 +180,12 @@ export function renderAppView(container) {
       renderSleepSection(moduleContainer, () => renderAppView(container));
     } else if (activeAppTab === 'quests') {
       renderQuestsSection(moduleContainer, () => renderAppView(container));
+    } else if (activeAppTab === 'shop') {
+      renderShopSection(moduleContainer, () => renderAppView(container));
     }
   }
 }
+
 
 
 
