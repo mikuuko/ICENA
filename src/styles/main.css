@@ -1,0 +1,28 @@
+/* ICENA — Main Design System (Kawaii Cat Theme) */
+:root {
+  --primary-color: #FF9EAA;
+  --secondary-color: #FFD1DA;
+  --bg-color: #FFF5F7;
+  --card-bg: rgba(255, 255, 255, 0.85);
+  --text-color: #333333;
+  --text-muted: #888888;
+  --accent-pink: #FF6B8B;
+  --accent-gold: #FFD700;
+  --border-radius: 16px;
+  --shadow-sm: 0 4px 12px rgba(255, 158, 170, 0.15);
+  --shadow-md: 0 8px 24px rgba(255, 158, 170, 0.25);
+  --font-family: 'Kanit', 'Mali', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+}

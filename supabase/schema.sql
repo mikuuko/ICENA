@@ -1,0 +1,2 @@
+-- ICENA Database Schema (Supabase PostgreSQL)
+-- Created in Phase 1
