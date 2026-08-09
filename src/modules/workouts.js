@@ -1,6 +1,81 @@
 import { supabase } from '../supabase.js';
 import { state } from '../store/state.js';
+import { uploadImage } from './storage.js';
 import { showToast } from '../ui/toast.js';
+
+// Helper to convert File to Base64
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = (error) => reject(error);
+  });
+}
+
+// Analyze workout report screenshot using Gemini AI Vision (gemini-3.5-flash-lite)
+export async function analyzeWorkoutImage(imageFile) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey || !imageFile) {
+    showToast('กรุณาตั้งค่า VITE_GEMINI_API_KEY ก่อนใช้งาน AI Vision ค่ะ', 'warning');
+    return null;
+  }
+
+  try {
+    const base64Data = await fileToBase64(imageFile);
+    const mimeType = imageFile.type || 'image/jpeg';
+    const model = 'gemini-3.5-flash-lite';
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const prompt = `คุณคือ AI ผู้เชี่ยวชาญการออกกำลังกายประจำแอป ICENA (โค้ชเหมียว 🐱) จงอ่านสกรีนช็อตผลการออกกำลังกายนี้แล้วตอบกลับเป็น JSON เท่านั้น โดยไม่ต้องมีข้อความเปิดปิดหรือ Markdown codeblock formatting ใดๆ โครงสร้าง JSON:
+{
+  "type": "cardio",
+  "duration_minutes": 45,
+  "intensity": "medium",
+  "note": "ข้อความสรุปกิจกรรมสั้นๆ"
+}
+(ประเภท type เลือกจาก 'cardio', 'weight', 'yoga', 'running', 'cycling'; ระดับ intensity เลือกจาก 'low', 'medium', 'high')`;
+
+    const payload = {
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            {
+              inline_data: {
+                mime_type: mimeType,
+                data: base64Data
+              }
+            }
+          ]
+        }
+      ]
+    };
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      showToast('วิเคราะห์รูปการออกกำลังกายไม่สำเร็จ (API Error)', 'error');
+      return null;
+    }
+
+    const resData = await response.json();
+    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const result = JSON.parse(cleanedText);
+
+    showToast('วิเคราะห์ผลออกกำลังกายด้วย Gemini AI สำเร็จ! 🏃‍♂️✨', 'success');
+    return result;
+  } catch (err) {
+    console.error('Failed to analyze workout image:', err);
+    showToast('เกิดข้อผิดพลาดในการวิเคราะห์รูปออกกำลังกาย', 'error');
+    return null;
+  }
+}
 
 // Load workouts for current user
 export async function loadWorkouts() {
@@ -28,7 +103,7 @@ export async function loadWorkouts() {
 }
 
 // Log new workout and award coins via Server-Side RPC ONLY
-export async function logWorkout({ type, duration_minutes, intensity, note = '', image_url = null }) {
+export async function logWorkout({ type, duration_minutes, intensity, note = '', image_file = null }) {
   if (!state.user) {
     showToast('กรุณาเข้าสู่ระบบก่อนบันทึกกิจกรรมค่ะ', 'warning');
     return { success: false, error: 'Not authenticated' };
@@ -41,6 +116,15 @@ export async function logWorkout({ type, duration_minutes, intensity, note = '',
   }
 
   try {
+    let image_url = null;
+
+    if (image_file) {
+      const uploadRes = await uploadImage(image_file, 'workout');
+      if (uploadRes.success) {
+        image_url = uploadRes.path;
+      }
+    }
+
     // 1. Insert Workout Record
     const { data: newWorkout, error: insertErr } = await supabase
       .from('workouts')

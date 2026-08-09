@@ -1,5 +1,5 @@
 import { state } from '../store/state.js';
-import { logDiet, deleteDietLog, analyzeFoodImage } from '../modules/diet.js';
+import { logDiet, deleteDietLog, analyzeFoodImage, analyzeFoodText } from '../modules/diet.js';
 import { getSignedImageUrl } from '../modules/storage.js';
 
 const MEAL_TYPES = [
@@ -18,6 +18,8 @@ const SCORE_COLORS = {
 
 export function renderDietSection(container, onUpdateCallback) {
   let selectedFile = null;
+  let currentCalories = 400;
+  let currentScore = 'B';
   let aiResultData = {};
 
   container.innerHTML = `
@@ -25,7 +27,7 @@ export function renderDietSection(container, onUpdateCallback) {
       <!-- Diet Form Card -->
       <div class="card" style="background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; border: 1px solid #FFE0E6;">
         <h3 style="color: #FF6B8B; margin-bottom: 15px; font-family: 'Mali', cursive; display: flex; align-items: center; gap: 8px;">
-          <span>🥗</span> บันทึกมื้ออาหาร (Gemini AI Vision 🤖)
+          <span>🥗</span> บันทึกมื้ออาหาร (Gemini AI 🤖)
         </h3>
 
         <!-- Photo Upload & Scan Area -->
@@ -35,10 +37,10 @@ export function renderDietSection(container, onUpdateCallback) {
             <img id="photo-preview" style="max-height: 180px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
           </div>
           <button type="button" id="btn-select-photo" style="background: white; border: 1.5px solid #FF9EAA; color: #FF6B8B; padding: 8px 16px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit';">
-            📸 เลือกรูปอาหาร
+            📸 ถ่าย/เลือกรูปอาหาร (ถ้ามี)
           </button>
           <button type="button" id="btn-scan-ai" style="display: none; background: #FF9EAA; color: white; border: none; padding: 8px 16px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-left: 8px; font-family: 'Kanit';">
-            ✨ สแกนด้วย Gemini AI
+            ✨ สแกนรูปด้วย Gemini AI
           </button>
           <p id="ai-status-text" style="font-size: 0.8rem; color: #888; margin-top: 6px; display: none;"></p>
         </div>
@@ -52,7 +54,7 @@ export function renderDietSection(container, onUpdateCallback) {
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
               ${MEAL_TYPES.map((m, idx) => `
                 <label style="cursor: pointer;">
-                  <input type="radio" name="meal_type" value="${m.id}" ${idx === 0 ? 'checked' : ''} style="display: none;" class="meal-type-radio">
+                  <input type="radio" name="meal_type" value="${m.id}" ${idx === 1 ? 'checked' : ''} style="display: none;" class="meal-type-radio">
                   <div class="meal-pill" style="border: 2px solid #FF9EAA; border-radius: 12px; padding: 8px 4px; text-align: center; font-size: 0.8rem; font-weight: 500; transition: all 0.2s;">
                     <div style="font-size: 1.2rem;">${m.emoji}</div>
                     <div style="margin-top: 2px;">${m.name}</div>
@@ -62,34 +64,28 @@ export function renderDietSection(container, onUpdateCallback) {
             </div>
           </div>
 
-          <!-- Food Name & Calories -->
-          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 15px;">
-            <div>
-              <label for="food_name" style="display: block; font-size: 0.9rem; font-weight: bold; color: #555; margin-bottom: 6px;">
-                ชื่ออาหาร
-              </label>
-              <input type="text" id="food_name" placeholder="เช่น ข้าวมันไก่" required style="width: 100%; padding: 10px; border: 1.5px solid #FFC0CB; border-radius: 12px; font-size: 0.95rem; box-sizing: border-box;">
-            </div>
-
-            <div>
-              <label for="calories" style="display: block; font-size: 0.9rem; font-weight: bold; color: #555; margin-bottom: 6px;">
-                แคลอรี (kcal)
-              </label>
-              <input type="number" id="calories" min="0" value="450" required style="width: 100%; padding: 10px; border: 1.5px solid #FFC0CB; border-radius: 12px; font-size: 0.95rem; box-sizing: border-box;">
+          <!-- Food Name Input -->
+          <div style="margin-bottom: 15px;">
+            <label for="food_name" style="display: block; font-size: 0.9rem; font-weight: bold; color: #555; margin-bottom: 6px;">
+              ชื่ออาหารที่รับประทาน
+            </label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="food_name" placeholder="เช่น ข้าวมันไก่, สลัดอกไก่" required style="flex: 1; padding: 10px; border: 1.5px solid #FFC0CB; border-radius: 12px; font-size: 0.95rem; box-sizing: border-box;">
+              <button type="button" id="btn-text-ai" style="background: #FFF0F4; border: 1.5px solid #FF9EAA; color: #FF6B8B; padding: 0 12px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; cursor: pointer; font-family: 'Kanit';">
+                🤖 AI ประเมิน
+              </button>
             </div>
           </div>
 
-          <!-- Score -->
-          <div style="margin-bottom: 18px;">
-            <label for="score" style="display: block; font-size: 0.9rem; font-weight: bold; color: #555; margin-bottom: 6px;">
-              เกรดคุณค่าอาหาร
-            </label>
-            <select id="score" style="width: 100%; padding: 10px; border: 1.5px solid #FFC0CB; border-radius: 12px; font-size: 0.95rem; box-sizing: border-box; background: white;">
-              <option value="A">Grade A 🌟 ดีมาก (คลีน/เฮลตี้)</option>
-              <option value="B" selected>Grade B 👍 ดี (มีคุณค่าทางโภชนาการ)</option>
-              <option value="C">Grade C ⚠️ ปานกลาง (แป้ง/ไขมันสูง)</option>
-              <option value="D">Grade D 🍔 ควรระวัง (ของทอด/หวานจัด)</option>
-            </select>
+          <!-- AI Evaluation Display Badge (Auto-populated by AI) -->
+          <div id="ai-evaluation-box" style="background: #FFF9FA; border: 1px solid #FFE0E6; border-radius: 14px; padding: 12px 15px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div style="font-size: 0.8rem; color: #888;">ผลการประเมินจาก Gemini AI 🐱</div>
+              <div id="ai-eval-summary" style="font-size: 0.9rem; font-weight: 500; color: #444; margin-top: 2px;">
+                ประมาณการ: <b id="eval-kcal" style="color: #FF6B8B;">400</b> kcal • เกรด <span id="eval-score" style="background: #2196F3; color: white; padding: 1px 8px; border-radius: 10px; font-size: 0.8rem;">Grade B</span>
+              </div>
+            </div>
+            <div style="font-size: 1.5rem;">🤖</div>
           </div>
 
           <button type="submit" id="btn-submit-diet" style="width: 100%; background: #FF9EAA; color: white; border: none; padding: 12px; border-radius: 14px; font-size: 1rem; font-weight: bold; cursor: pointer; font-family: 'Kanit', sans-serif;">
@@ -137,7 +133,20 @@ export function renderDietSection(container, onUpdateCallback) {
   updateRadioStyles();
   radioInputs.forEach(r => r.addEventListener('change', updateRadioStyles));
 
-  // Photo Selector Handlers
+  // Helper to update UI evaluation badge
+  const updateEvaluationBadge = (kcal, score) => {
+    currentCalories = kcal;
+    currentScore = score;
+    const kcalElem = container.querySelector('#eval-kcal');
+    const scoreElem = container.querySelector('#eval-score');
+    if (kcalElem) kcalElem.innerText = kcal;
+    if (scoreElem) {
+      scoreElem.innerText = `Grade ${score}`;
+      scoreElem.style.background = SCORE_COLORS[score] || '#2196F3';
+    }
+  };
+
+  // Photo Selector & Scan AI Handlers
   const photoInput = container.querySelector('#diet-photo-input');
   const btnSelectPhoto = container.querySelector('#btn-select-photo');
   const btnScanAI = container.querySelector('#btn-scan-ai');
@@ -159,25 +168,40 @@ export function renderDietSection(container, onUpdateCallback) {
     }
   });
 
-  // Scan AI Handler
   btnScanAI?.addEventListener('click', async () => {
     if (!selectedFile) return;
     btnScanAI.disabled = true;
     btnScanAI.innerText = '⏳ กำลังวิเคราะห์...';
-    aiStatusText.innerText = 'โค้ชเหมียว 🐱 กำลังวิเคราะห์โภชนาการอาหารของคุณ...';
+    aiStatusText.innerText = 'โค้ชเหมียว 🐱 กำลังวิเคราะห์รูปอาหารของคุณ...';
 
     const result = await analyzeFoodImage(selectedFile);
     btnScanAI.disabled = false;
-    btnScanAI.innerText = '✨ สแกนด้วย Gemini AI';
+    btnScanAI.innerText = '✨ สแกนรูปด้วย Gemini AI';
 
     if (result) {
       aiResultData = result;
       if (result.food_name) container.querySelector('#food_name').value = result.food_name;
-      if (result.calories) container.querySelector('#calories').value = result.calories;
-      if (result.score) container.querySelector('#score').value = result.score;
+      updateEvaluationBadge(result.calories || 400, result.score || 'B');
       aiStatusText.innerText = `วิเคราะห์สำเร็จ: ${result.summary || ''}`;
-    } else {
-      aiStatusText.innerText = 'การวิเคราะห์ล้มเหลว กรุณากรอกข้อมูลเองนะคะ';
+    }
+  });
+
+  // Text AI Estimation Handler
+  container.querySelector('#btn-text-ai')?.addEventListener('click', async () => {
+    const foodName = container.querySelector('#food_name')?.value;
+    if (!foodName) return;
+
+    const btnTextAI = container.querySelector('#btn-text-ai');
+    btnTextAI.disabled = true;
+    btnTextAI.innerText = '⏳ กำลังประเมิน...';
+
+    const result = await analyzeFoodText(foodName);
+    btnTextAI.disabled = false;
+    btnTextAI.innerText = '🤖 AI ประเมิน';
+
+    if (result) {
+      aiResultData = result;
+      updateEvaluationBadge(result.calories || 400, result.score || 'B');
     }
   });
 
@@ -191,14 +215,12 @@ export function renderDietSection(container, onUpdateCallback) {
 
     const selectedMeal = container.querySelector('input[name="meal_type"]:checked')?.value || 'lunch';
     const foodName = container.querySelector('#food_name')?.value;
-    const calories = container.querySelector('#calories')?.value;
-    const score = container.querySelector('#score')?.value;
 
     const res = await logDiet({
       meal_type: selectedMeal,
       food_name: foodName,
-      calories,
-      score,
+      calories: currentCalories,
+      score: currentScore,
       image_file: selectedFile,
       ai_analysis: aiResultData
     });

@@ -90,6 +90,48 @@ export async function analyzeFoodImage(imageFile) {
   }
 }
 
+// Analyze food calories & score from text name using Gemini AI
+export async function analyzeFoodText(foodName) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey || !foodName) {
+    return null;
+  }
+
+  try {
+    const model = 'gemini-3.5-flash-lite';
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const prompt = `คุณคือ AI นักโภชนาการประจำแอป ICENA (โค้ชเหมียว 🐱) จงประเมินเมนูอาหารชื่อ "${foodName}" แล้วตอบกลับเป็น JSON เท่านั้น โดยไม่ต้องมีข้อความเปิดปิดหรือ Markdown codeblock formatting ใดๆ โครงสร้าง JSON:
+{
+  "food_name": "${foodName}",
+  "calories": 450,
+  "score": "B",
+  "summary": "คำแนะนำโภชนาการสั้นๆ"
+}
+(เกรด score เลือกจาก A: ดีมากต่อสุขภาพ, B: ดี, C: ปานกลาง/แป้งสูง, D: ของทอด/หวานจัด)`;
+
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }]
+    };
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) return null;
+
+    const resData = await response.json();
+    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanedText);
+  } catch (err) {
+    console.error('Failed to analyze food text:', err);
+    return null;
+  }
+}
+
 // Load diet logs for current user
 export async function loadDietLogs() {
   if (!state.user) return [];

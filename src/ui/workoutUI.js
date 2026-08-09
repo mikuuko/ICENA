@@ -1,5 +1,6 @@
 import { state } from '../store/state.js';
-import { logWorkout, deleteWorkout } from '../modules/workouts.js';
+import { logWorkout, deleteWorkout, analyzeWorkoutImage } from '../modules/workouts.js';
+import { getSignedImageUrl } from '../modules/storage.js';
 
 const WORKOUT_TYPES = [
   { id: 'cardio', name: 'คาร์ดิโอ', emoji: '🏃‍♂️' },
@@ -16,6 +17,8 @@ const INTENSITY_OPTIONS = [
 ];
 
 export function renderWorkoutSection(container, onUpdateCallback) {
+  let selectedFile = null;
+
   container.innerHTML = `
     <div class="workout-section" style="margin-top: 20px; text-align: left;">
       <!-- Log Form Card -->
@@ -23,6 +26,21 @@ export function renderWorkoutSection(container, onUpdateCallback) {
         <h3 style="color: #FF6B8B; margin-bottom: 15px; font-family: 'Mali', cursive; display: flex; align-items: center; gap: 8px;">
           <span>🏃‍♂️</span> บันทึกการออกกำลังกาย
         </h3>
+
+        <!-- Optional Workout Screenshot Upload & Scan Area -->
+        <div style="background: #FFF5F7; border: 2px dashed #FF9EAA; border-radius: 16px; padding: 15px; text-align: center; margin-bottom: 15px;">
+          <input type="file" id="workout-photo-input" accept="image/*" style="display: none;">
+          <div id="workout-preview-container" style="display: none; margin-bottom: 10px;">
+            <img id="workout-preview" style="max-height: 160px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+          </div>
+          <button type="button" id="btn-select-workout-photo" style="background: white; border: 1.5px solid #FF9EAA; color: #FF6B8B; padding: 8px 16px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit';">
+            📱 สกรีนช็อตแอปออกกำลังกาย (ถ้ามี)
+          </button>
+          <button type="button" id="btn-scan-workout-ai" style="display: none; background: #FF9EAA; color: white; border: none; padding: 8px 16px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-left: 8px; font-family: 'Kanit';">
+            ✨ สแกนด้วย Gemini AI
+          </button>
+          <p id="workout-ai-status" style="font-size: 0.8rem; color: #888; margin-top: 6px; display: none;"></p>
+        </div>
 
         <form id="workout-form">
           <!-- Exercise Type -->
@@ -80,8 +98,8 @@ export function renderWorkoutSection(container, onUpdateCallback) {
 
       <!-- Workout History Cards -->
       <div class="history-card" style="background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #FFE0E6;">
-        <h3 style="color: #FF6B8B; margin-bottom: 15px; font-family: 'Mali', cursive; display: flex; align-items: center; justify-content: space-between;">
-          <span>📋 ประวัติการออกกำลังกาย (${state.workouts.length})</span>
+        <h3 style="color: #FF6B8B; margin-bottom: 15px; font-family: 'Mali', cursive;">
+          📋 ประวัติการออกกำลังกาย (${state.workouts.length})
         </h3>
 
         ${state.workouts.length === 0 ? `
@@ -91,47 +109,8 @@ export function renderWorkoutSection(container, onUpdateCallback) {
             <p style="font-size: 0.85rem;">เริ่มออกกำลังกายแล้วบันทึกเพื่อสะสมเหรียญกันเถอะ!</p>
           </div>
         ` : `
-          <div class="workout-list" style="display: flex; flex-direction: column; gap: 10px;">
-            ${state.workouts.map(w => {
-              const typeObj = WORKOUT_TYPES.find(t => t.id === w.type) || { name: w.type, emoji: '🏋️‍♂️' };
-              const intensityObj = INTENSITY_OPTIONS.find(i => i.id === w.intensity) || { name: w.intensity, color: '#888' };
-              const loggedDate = new Date(w.logged_at).toLocaleString('th-TH', {
-                dateStyle: 'short',
-                timeStyle: 'short'
-              });
-
-              return `
-                <div style="display: flex; align-items: center; justify-content: space-between; background: #FFF5F7; padding: 12px 15px; border-radius: 14px; border-left: 4px solid #FF9EAA;">
-                  <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="font-size: 1.8rem; background: white; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                      ${typeObj.emoji}
-                    </div>
-                    <div>
-                      <div style="font-weight: bold; color: #333; font-size: 0.95rem;">
-                        ${typeObj.name} (${w.duration_minutes} นาที)
-                        <span style="font-size: 0.75rem; color: white; background: ${intensityObj.color}; padding: 2px 8px; border-radius: 10px; margin-left: 6px; font-weight: normal;">
-                          ${w.intensity}
-                        </span>
-                      </div>
-                      <div style="font-size: 0.8rem; color: #777; margin-top: 2px;">
-                        ${loggedDate} ${w.note ? `• "${w.note}"` : ''}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="text-align: right;">
-                      <div style="font-weight: bold; color: #FF9EAA; font-size: 0.95rem;">
-                        +${w.coins_earned || 0} 🪙
-                      </div>
-                    </div>
-                    <button class="btn-delete-workout" data-id="${w.id}" title="ลบรายการ" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #FF6B6B; padding: 4px;">
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              `;
-            }).join('')}
+          <div id="workout-list" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Injected asynchronously -->
           </div>
         `}
       </div>
@@ -157,6 +136,54 @@ export function renderWorkoutSection(container, onUpdateCallback) {
   updateRadioStyles();
   radioInputs.forEach(r => r.addEventListener('change', updateRadioStyles));
 
+  // Photo Selector Handlers
+  const photoInput = container.querySelector('#workout-photo-input');
+  const btnSelectPhoto = container.querySelector('#btn-select-workout-photo');
+  const btnScanAI = container.querySelector('#btn-scan-workout-ai');
+  const previewContainer = container.querySelector('#workout-preview-container');
+  const previewImg = container.querySelector('#workout-preview');
+  const aiStatusText = container.querySelector('#workout-ai-status');
+
+  btnSelectPhoto?.addEventListener('click', () => photoInput?.click());
+
+  photoInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      selectedFile = file;
+      previewImg.src = URL.createObjectURL(file);
+      previewContainer.style.display = 'block';
+      btnScanAI.style.display = 'inline-block';
+      aiStatusText.style.display = 'block';
+      aiStatusText.innerText = 'พร้อมสแกนผลสกรีนช็อตด้วย Gemini AI แล้วค่ะ ✨';
+    }
+  });
+
+  // Scan AI Handler
+  btnScanAI?.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    btnScanAI.disabled = true;
+    btnScanAI.innerText = '⏳ กำลังวิเคราะห์...';
+    aiStatusText.innerText = 'โค้ชเหมียว 🐱 กำลังอ่านสกรีนช็อตออกกำลังกายของคุณ...';
+
+    const result = await analyzeWorkoutImage(selectedFile);
+    btnScanAI.disabled = false;
+    btnScanAI.innerText = '✨ สแกนด้วย Gemini AI';
+
+    if (result) {
+      if (result.type) {
+        const radioToSelect = container.querySelector(`input[name="workout_type"][value="${result.type}"]`);
+        if (radioToSelect) {
+          radioToSelect.checked = true;
+          updateRadioStyles();
+        }
+      }
+      if (result.duration_minutes) container.querySelector('#workout_duration').value = result.duration_minutes;
+      if (result.intensity) container.querySelector('#workout_intensity').value = result.intensity;
+      if (result.note) container.querySelector('#workout_note').value = result.note;
+      aiStatusText.innerText = 'วิเคราะห์สำเร็จ สกัดข้อมูลเรียบร้อยแล้วค่ะ ✨';
+    }
+  });
+
   // Form Submit Handler
   const form = container.querySelector('#workout-form');
   form?.addEventListener('submit', async (e) => {
@@ -174,7 +201,8 @@ export function renderWorkoutSection(container, onUpdateCallback) {
       type: selectedType,
       duration_minutes: duration,
       intensity,
-      note
+      note,
+      image_file: selectedFile
     });
 
     submitBtn.disabled = false;
@@ -185,16 +213,67 @@ export function renderWorkoutSection(container, onUpdateCallback) {
     }
   });
 
-  // Delete Handlers
-  container.querySelectorAll('.btn-delete-workout').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const workoutId = e.currentTarget.getAttribute('data-id');
-      if (confirm('คุณต้องการลบรายการออกกำลังกายนี้ใช่หรือไม่?')) {
-        const res = await deleteWorkout(workoutId);
-        if (res.success && typeof onUpdateCallback === 'function') {
-          onUpdateCallback();
-        }
-      }
-    });
-  });
+  // Render Workout Items with Signed Image URLs
+  const workoutListContainer = container.querySelector('#workout-list');
+  if (workoutListContainer && state.workouts.length > 0) {
+    (async () => {
+      const itemsHtml = await Promise.all(state.workouts.map(async (w) => {
+        const typeObj = WORKOUT_TYPES.find(t => t.id === w.type) || { name: w.type, emoji: '🏋️‍♂️' };
+        const intensityObj = INTENSITY_OPTIONS.find(i => i.id === w.intensity) || { name: w.intensity, color: '#888' };
+        const signedUrl = w.image_url ? await getSignedImageUrl(w.image_url) : null;
+        const loggedDate = new Date(w.logged_at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #FFF5F7; padding: 12px 15px; border-radius: 14px; border-left: 4px solid #FF9EAA;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              ${signedUrl ? `
+                <img src="${signedUrl}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.1);" />
+              ` : `
+                <div style="font-size: 1.8rem; background: white; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                  ${typeObj.emoji}
+                </div>
+              `}
+              <div>
+                <div style="font-weight: bold; color: #333; font-size: 0.95rem;">
+                  ${typeObj.name} (${w.duration_minutes} นาที)
+                  <span style="font-size: 0.75rem; color: white; background: ${intensityObj.color}; padding: 2px 8px; border-radius: 10px; margin-left: 6px; font-weight: normal;">
+                    ${w.intensity}
+                  </span>
+                </div>
+                <div style="font-size: 0.8rem; color: #777; margin-top: 2px;">
+                  ${loggedDate} ${w.note ? `• "${w.note}"` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="text-align: right;">
+                <div style="font-weight: bold; color: #FF9EAA; font-size: 0.95rem;">
+                  +${w.coins_earned || 0} 🪙
+                </div>
+              </div>
+              <button class="btn-delete-workout" data-id="${w.id}" title="ลบรายการ" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #FF6B6B; padding: 4px;">
+                🗑️
+              </button>
+            </div>
+          </div>
+        `;
+      }));
+
+      workoutListContainer.innerHTML = itemsHtml.join('');
+
+      // Delete Event Listeners
+      workoutListContainer.querySelectorAll('.btn-delete-workout').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const workoutId = e.currentTarget.getAttribute('data-id');
+          if (confirm('คุณต้องการลบรายการออกกำลังกายนี้ใช่หรือไม่?')) {
+            const res = await deleteWorkout(workoutId);
+            if (res.success && typeof onUpdateCallback === 'function') {
+              onUpdateCallback();
+            }
+          }
+        });
+      });
+    })();
+  }
 }
