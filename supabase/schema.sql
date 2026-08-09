@@ -301,7 +301,10 @@ CREATE POLICY "storage: delete own prefix"
 -- 12. AUTOMATIC PROFILE & GAME STATE CREATION TRIGGER
 -- --------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE plpgsql AS $$
 BEGIN
     INSERT INTO public.profiles (id, display_name, avatar_url)
     VALUES (
@@ -316,8 +319,10 @@ BEGIN
     ON CONFLICT (user_id) DO NOTHING;
 
     RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE OR REPLACE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
