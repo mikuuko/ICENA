@@ -91,16 +91,17 @@ export function renderAppView(container) {
   const partnerName = state.partnerProfile?.display_name || 'คู่ของคุณ';
 
   container.innerHTML = `
-    <div id="app-container" style="max-width: 600px; margin: 0 auto; min-height: 100vh; background: #FAF7F8; display: flex; flex-direction: column;">
-      <header style="background: linear-gradient(135deg, #FF9EAA, #FFB7C5); color: white; padding: 20px 20px 20px 20px; text-align: center; border-radius: 0 0 24px 24px; position: relative; box-shadow: 0 4px 15px rgba(255,158,170,0.3);">
+    <div id="app-container">
+      <!-- iOS Sticky Header -->
+      <header style="background: linear-gradient(135deg, #FF9EAA, #FFB7C5); color: white; padding: 25px 20px 20px 20px; text-align: center; border-radius: 0 0 24px 24px; position: relative; box-shadow: 0 4px 15px rgba(255,158,170,0.3);">
         <h2 style="font-family: 'Mali', cursive; margin: 0; font-size: 1.6rem;">🐱 ICENA</h2>
         <p style="font-size: 0.95rem; margin-top: 4px; opacity: 0.95;">สวัสดีคุณ ${profileName} 💕 (คู่กับ ${partnerName})</p>
-        <button id="btn-logout" style="position: absolute; right: 15px; top: 20px; background: rgba(255,255,255,0.25); border: none; color: white; padding: 6px 12px; border-radius: 12px; cursor: pointer; font-family: 'Kanit', sans-serif; font-size: 0.85rem;">
+        <button id="btn-logout" style="position: absolute; right: 15px; top: 22px; background: rgba(255,255,255,0.25); border: none; color: white; padding: 6px 12px; border-radius: 12px; cursor: pointer; font-family: 'Kanit', sans-serif; font-size: 0.85rem;">
           ออกจากระบบ
         </button>
 
         <!-- Global Header Stats Bar -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; background: rgba(255,255,255,0.2); backdrop-filter: blur(8px); border-radius: 16px; padding: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; background: rgba(255,255,255,0.2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 16px; padding: 10px;">
           <div>
             <div style="font-size: 0.75rem; opacity: 0.9;">เหรียญสะสม</div>
             <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px;">🪙 ${state.gameState.coins}</div>
@@ -116,34 +117,44 @@ export function renderAppView(container) {
         </div>
       </header>
 
-      <!-- App Navigation Bar -->
-      <nav style="display: grid; grid-template-columns: repeat(7, 1fr); background: white; margin: 15px 5px 0 5px; padding: 4px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); gap: 2px;">
-        <button id="nav-workout" style="background: ${activeAppTab === 'workout' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'workout' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
-          🏃‍♂️ ออกกำลัง
-        </button>
-        <button id="nav-diet" style="background: ${activeAppTab === 'diet' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'diet' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
-          🥗 อาหาร
-        </button>
-        <button id="nav-sleep" style="background: ${activeAppTab === 'sleep' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'sleep' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
-          😴 การนอน
-        </button>
-        <button id="nav-quests" style="background: ${activeAppTab === 'quests' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'quests' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
-          🏆 ภารกิจ
-        </button>
-        <button id="nav-shop" style="background: ${activeAppTab === 'shop' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'shop' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
-          🛒 ร้านค้า
-        </button>
-        <button id="nav-analytics" style="background: ${activeAppTab === 'analytics' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'analytics' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
-          📊 วิเคราะห์
-        </button>
-        <button id="nav-weekly" style="background: ${activeAppTab === 'weekly' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'weekly' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
-          ⚔️ แข่งขัน
-        </button>
-      </nav>
-
-      <main style="padding: 0 20px 20px 20px; flex: 1;">
+      <!-- Main Module Body -->
+      <main style="padding: 15px 18px; flex: 1;">
         <div id="module-container"></div>
       </main>
+
+      <!-- iOS Fixed Bottom Navigation Bar (Glassmorphism 7 Tabs) -->
+      <nav class="ios-bottom-nav">
+        <div class="ios-nav-scroll hide-scrollbar">
+          <button id="nav-workout" class="ios-nav-item ${activeAppTab === 'workout' ? 'active' : ''}">
+            <span style="font-size: 1.25rem;">🏃‍♂️</span>
+            <span>ออกกำลัง</span>
+          </button>
+          <button id="nav-diet" class="ios-nav-item ${activeAppTab === 'diet' ? 'active' : ''}">
+            <span style="font-size: 1.25rem;">🥗</span>
+            <span>อาหาร</span>
+          </button>
+          <button id="nav-sleep" class="ios-nav-item ${activeAppTab === 'sleep' ? 'active' : ''}">
+            <span style="font-size: 1.25rem;">😴</span>
+            <span>การนอน</span>
+          </button>
+          <button id="nav-quests" class="ios-nav-item ${activeAppTab === 'quests' ? 'active' : ''}">
+            <span style="font-size: 1.25rem;">🏆</span>
+            <span>ภารกิจ</span>
+          </button>
+          <button id="nav-shop" class="ios-nav-item ${activeAppTab === 'shop' ? 'active' : ''}">
+            <span style="font-size: 1.25rem;">🛒</span>
+            <span>ร้านค้า</span>
+          </button>
+          <button id="nav-analytics" class="ios-nav-item ${activeAppTab === 'analytics' ? 'active' : ''}">
+            <span style="font-size: 1.25rem;">📊</span>
+            <span>วิเคราะห์</span>
+          </button>
+          <button id="nav-weekly" class="ios-nav-item ${activeAppTab === 'weekly' ? 'active' : ''}">
+            <span style="font-size: 1.25rem;">⚔️</span>
+            <span>แข่งขัน</span>
+          </button>
+        </div>
+      </nav>
     </div>
   `;
 
@@ -207,6 +218,7 @@ export function renderAppView(container) {
     }
   }
 }
+
 
 
 
