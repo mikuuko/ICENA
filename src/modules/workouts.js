@@ -1,6 +1,9 @@
 import { supabase } from '../supabase.js';
 import { state } from '../store/state.js';
 import { uploadImage } from './storage.js';
+import { recalcStreak } from './streak.js';
+import { checkAndIssueCoupon } from './coupon.js';
+import { checkAchievements } from './achievements.js';
 import { showToast } from '../ui/toast.js';
 
 // Helper to convert File to Base64
@@ -164,8 +167,11 @@ export async function logWorkout({ type, duration_minutes, intensity, note = '',
       );
     }
 
-    // 3. Refresh Workouts State
+    // 3. Refresh Workouts State & Trigger Gamification Updates
     await loadWorkouts();
+    await recalcStreak();
+    await checkAndIssueCoupon(duration);
+    await checkAchievements();
 
     return { success: true, data: newWorkout, coinsEarned };
   } catch (err) {
@@ -175,7 +181,7 @@ export async function logWorkout({ type, duration_minutes, intensity, note = '',
   }
 }
 
-// Delete workout record
+// Delete workout record (Recalculates Streak on delete!)
 export async function deleteWorkout(workoutId) {
   if (!state.user || !workoutId) return { success: false };
 
@@ -194,6 +200,7 @@ export async function deleteWorkout(workoutId) {
 
     showToast('ลบรายการออกกำลังกายเรียบร้อยแล้วค่ะ 🗑️', 'info');
     await loadWorkouts();
+    await recalcStreak();
     return { success: true };
   } catch (err) {
     console.error('Unexpected error deleting workout:', err);
@@ -201,3 +208,4 @@ export async function deleteWorkout(workoutId) {
     return { success: false, error: err };
   }
 }
+

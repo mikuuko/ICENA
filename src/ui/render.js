@@ -3,9 +3,10 @@ import { signInWithUsername, signUpWithUsername, signOutUser } from '../modules/
 import { renderWorkoutSection } from './workoutUI.js';
 import { renderDietSection } from './dietUI.js';
 import { renderSleepSection } from './sleepUI.js';
+import { renderQuestsSection } from './questsUI.js';
 
 let activeAuthTab = 'signin'; // 'signin' or 'signup'
-let activeAppTab = 'workout'; // 'workout', 'diet', or 'sleep'
+let activeAppTab = 'workout'; // 'workout', 'diet', 'sleep', or 'quests'
 
 // Render Auth Screen (Login / Register)
 export function renderAuthScreen(container) {
@@ -113,15 +114,18 @@ export function renderAppView(container) {
       </header>
 
       <!-- App Navigation Bar -->
-      <nav style="display: grid; grid-template-columns: repeat(3, 1fr); background: white; margin: 15px 20px 0 20px; padding: 6px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); gap: 5px;">
-        <button id="nav-workout" style="background: ${activeAppTab === 'workout' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'workout' ? 'white' : '#666'}; border: none; padding: 10px 5px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; transition: all 0.2s;">
-          🏃‍♂️ ออกกำลังกาย
+      <nav style="display: grid; grid-template-columns: repeat(4, 1fr); background: white; margin: 15px 20px 0 20px; padding: 6px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); gap: 4px;">
+        <button id="nav-workout" style="background: ${activeAppTab === 'workout' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'workout' ? 'white' : '#666'}; border: none; padding: 10px 2px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.8rem; transition: all 0.2s;">
+          🏃‍♂️ ออกกำลัง
         </button>
-        <button id="nav-diet" style="background: ${activeAppTab === 'diet' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'diet' ? 'white' : '#666'}; border: none; padding: 10px 5px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; transition: all 0.2s;">
-          🥗 อาหาร (AI)
+        <button id="nav-diet" style="background: ${activeAppTab === 'diet' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'diet' ? 'white' : '#666'}; border: none; padding: 10px 2px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.8rem; transition: all 0.2s;">
+          🥗 อาหาร
         </button>
-        <button id="nav-sleep" style="background: ${activeAppTab === 'sleep' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'sleep' ? 'white' : '#666'}; border: none; padding: 10px 5px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; transition: all 0.2s;">
+        <button id="nav-sleep" style="background: ${activeAppTab === 'sleep' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'sleep' ? 'white' : '#666'}; border: none; padding: 10px 2px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.8rem; transition: all 0.2s;">
           😴 การนอน
+        </button>
+        <button id="nav-quests" style="background: ${activeAppTab === 'quests' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'quests' ? 'white' : '#666'}; border: none; padding: 10px 2px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.8rem; transition: all 0.2s;">
+          🏆 ภารกิจ
         </button>
       </nav>
 
@@ -151,6 +155,11 @@ export function renderAppView(container) {
     renderAppView(container);
   });
 
+  container.querySelector('#nav-quests')?.addEventListener('click', () => {
+    activeAppTab = 'quests';
+    renderAppView(container);
+  });
+
   // Render Selected Module Component
   const moduleContainer = container.querySelector('#module-container');
   if (moduleContainer) {
@@ -160,9 +169,12 @@ export function renderAppView(container) {
       renderDietSection(moduleContainer, () => renderAppView(container));
     } else if (activeAppTab === 'sleep') {
       renderSleepSection(moduleContainer, () => renderAppView(container));
+    } else if (activeAppTab === 'quests') {
+      renderQuestsSection(moduleContainer, () => renderAppView(container));
     }
   }
 }
+
 
 
 
