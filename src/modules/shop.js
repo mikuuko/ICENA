@@ -42,6 +42,26 @@ export async function loadCustomShopItems() {
   }
 }
 
+// Fetch Partner's Shop Items & Coin Balance (for Victory Shop)
+export async function loadPartnerShopItems(partnerId) {
+  if (!partnerId) return { customItems: [], coins: 0 };
+
+  try {
+    const [customRes, stateRes] = await Promise.all([
+      supabase.from('custom_shop_items').select('*').eq('user_id', partnerId).eq('is_active', true),
+      supabase.from('user_game_state').select('coins').eq('user_id', partnerId).maybeSingle()
+    ]);
+
+    return {
+      customItems: customRes.data || [],
+      coins: stateRes.data?.coins || 0
+    };
+  } catch (err) {
+    console.error('Error fetching partner shop items:', err);
+    return { customItems: [], coins: 0 };
+  }
+}
+
 // Add Custom Shop Item
 export async function addCustomShopItem({ name, emoji = '🎁', price, kcal = 0 }) {
   if (!state.user) return { success: false };
@@ -211,36 +231,31 @@ export async function loadVictoryRedemptions() {
   }
 }
 
-// Redeem Victory Shop Item (Must be properly awaited! Bug #5 fix)
-export async function redeemVictoryItem(item) {
-  if (!state.user) return { success: false };
+// Redeem Victory Shop Item using Loser's Coins via Server-Side RPC ONLY
+export async function redeemVictoryItem({ item, loserId }) {
+  if (!state.user || !item || !loserId) {
+    showToast('กรุณาระบุข้อมูลผู้ชนะและผู้แพ้ให้ถูกต้องค่ะ', 'warning');
+    return { success: false };
+  }
 
   try {
-    const weekStart = getWeekStartDate();
+    const { data: resData, error: rpcErr } = await supabase.rpc('redeem_victory_shop_item', {
+      p_item_id: item.id,
+      p_item_name: item.name,
+      p_item_emoji: item.emoji || '🏆',
+      p_price: parseInt(item.price, 10) || 0,
+      p_loser_id: loserId
+    });
 
-    const { data, error } = await supabase
-      .from('victory_redemptions')
-      .insert({
-        user_id: state.user.id,
-        item_id: item.id,
-        item_name: item.name,
-        item_emoji: item.emoji || '🏆',
-        price_paid: 0,
-        week_start: weekStart,
-        is_fulfilled: false
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Failed to redeem victory item:', error);
-      showToast('ไม่สามารถแลกรางวัล Victory Shop ได้', 'error');
-      return { success: false, error };
+    if (rpcErr) {
+      console.error('RPC redeem_victory_shop_item error:', rpcErr);
+      showToast(rpcErr.message || 'ไม่สามารถแลกรางวัล Victory Shop ได้', 'error');
+      return { success: false, error: rpcErr };
     }
 
-    showToast(`แลกรางวัลฉลองชัยชนะ ${item.emoji} ${item.name} เรียบร้อยแล้วค่ะ! 👑`, 'success');
+    showToast(`ใช้เหรียญฝ่ายแพ้แลกซื้อ ${item.emoji} ${item.name} สำเร็จ! 👑`, 'success');
     await loadVictoryRedemptions();
-    return { success: true, data };
+    return { success: true, data: resData };
   } catch (err) {
     console.error('Unexpected error redeeming victory item:', err);
     showToast('เกิดข้อผิดพลาดในการแลกรางวัล Victory Shop', 'error');

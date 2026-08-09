@@ -401,3 +401,88 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- --------------------------------------------------------
+-- 14. RPC FUNCTION: redeem_victory_shop_item (Server-Side Only)
+-- --------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.redeem_victory_shop_item(
+    p_item_id TEXT,
+    p_item_name TEXT,
+    p_item_emoji TEXT,
+    p_price INT,
+    p_loser_id UUID
+) RETURNS JSONB AS $$
+DECLARE
+    v_winner_id UUID;
+    v_week_start DATE;
+    v_loser_coins INT;
+    v_already_redeemed BOOLEAN;
+BEGIN
+    v_winner_id := auth.uid();
+    IF v_winner_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    IF v_winner_id = p_loser_id THEN
+        RAISE EXCEPTION 'Cannot redeem victory shop item against yourself';
+    END IF;
+
+    -- Calculate current week start (Monday)
+    v_week_start := (DATE_TRUNC('week', NOW() AT TIME ZONE 'UTC'))::DATE;
+
+    -- Check if already redeemed in this week
+    SELECT EXISTS (
+        SELECT 1 FROM public.victory_redemptions
+        WHERE user_id = v_winner_id AND week_start = v_week_start
+    ) INTO v_already_redeemed;
+
+    IF v_already_redeemed THEN
+        RAISE EXCEPTION 'คุณใช้สิทธิ์ Victory Shop ประจำสัปดาห์นี้ไปแล้วค่ะ (1/1 ครั้ง)';
+    END IF;
+
+    -- Check loser coins
+    SELECT coins INTO v_loser_coins
+    FROM public.user_game_state
+    WHERE user_id = p_loser_id;
+
+    IF v_loser_coins IS NULL OR v_loser_coins < p_price THEN
+        RAISE EXCEPTION 'เหรียญของฝ่ายแพ้ไม่พอสำหรับแลกสินค้านี้';
+    END IF;
+
+    -- Deduct coins from loser
+    UPDATE public.user_game_state
+    SET coins = coins - p_price,
+        updated_at = NOW()
+    WHERE user_id = p_loser_id;
+
+    -- Log coin transaction for loser
+    INSERT INTO public.coin_transactions (user_id, amount, source, reference_id, description)
+    VALUES (
+        p_loser_id,
+        -p_price,
+        'victory_shop_redeem',
+        p_item_id,
+        'ถูกผู้ชนะแลกซื้อรางวัล ' || p_item_name
+    );
+
+    -- Record victory redemption for winner
+    INSERT INTO public.victory_redemptions (user_id, item_id, item_name, item_emoji, price_paid, week_start, is_fulfilled)
+    VALUES (
+        v_winner_id,
+        p_item_id,
+        p_item_name,
+        p_item_emoji,
+        p_price,
+        v_week_start,
+        false
+    );
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'item_name', p_item_name,
+        'price_paid', p_price,
+        'week_start', v_week_start
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+

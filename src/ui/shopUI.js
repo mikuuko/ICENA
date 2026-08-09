@@ -1,18 +1,27 @@
 import { state } from '../store/state.js';
 import {
   DEFAULT_SHOP_ITEMS,
-  VICTORY_SHOP_ITEMS,
   purchaseShopItem,
   addCustomShopItem,
   deleteCustomShopItem,
+  loadPartnerShopItems,
   redeemVictoryItem
 } from '../modules/shop.js';
+import { getWeekStartDate } from '../store/loader.js';
 
 export function renderShopSection(container, onUpdateCallback) {
   let pendingPurchaseItem = null;
 
   const userCoins = state.gameState.coins || 0;
   const availableCoupons = (state.gameState.coupons || []).filter(c => !c.is_used);
+  const partnerProfile = state.partnerProfile;
+  const partnerName = partnerProfile?.display_name || 'คู่ของคุณ';
+  const weekStart = getWeekStartDate();
+
+  // Check if user already redeemed a Victory Shop item this week
+  const isVictoryRedeemedThisWeek = (state.victoryRedemptions || []).some(
+    r => r.week_start === weekStart
+  );
 
   container.innerHTML = `
     <div class="shop-section" style="margin-top: 20px; text-align: left;">
@@ -38,7 +47,7 @@ export function renderShopSection(container, onUpdateCallback) {
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">
           ${DEFAULT_SHOP_ITEMS.map(item => `
-            <div style="background: #FFF5F7; border-radius: 16px; padding: 15px; text-align: center; border: 1px solid #FFE0E6; transition: transform 0.2s;" class="shop-item-card">
+            <div style="background: #FFF5F7; border-radius: 16px; padding: 15px; text-align: center; border: 1px solid #FFE0E6;">
               <div style="font-size: 2.8rem; margin-bottom: 6px;">${item.emoji}</div>
               <div style="font-weight: bold; font-size: 0.9rem; color: #333; margin-bottom: 2px;">${item.name}</div>
               <div style="font-size: 0.75rem; color: #888; margin-bottom: 8px;">~${item.kcal} kcal</div>
@@ -93,27 +102,23 @@ export function renderShopSection(container, onUpdateCallback) {
         `}
       </div>
 
-      <!-- Victory Shop Section -->
+      <!-- Victory Shop Section (Partner Items + Loser Coins) -->
       <div class="card" style="background: linear-gradient(135deg, #FFF9EB, #FFF3D6); border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; border: 1px solid #FFE0B2;">
-        <h3 style="color: #F57C00; margin-bottom: 12px; font-family: 'Mali', cursive; display: flex; align-items: center; gap: 8px;">
-          <span>👑</span> Victory Shop (สิทธิพิเศษผู้ชนะ)
-        </h3>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <h3 style="color: #F57C00; font-family: 'Mali', cursive; display: flex; align-items: center; gap: 8px; margin: 0;">
+            <span>👑</span> Victory Shop (ร้านค้าของ ${partnerName})
+          </h3>
+          <span style="font-size: 0.8rem; background: #FFE0B2; color: #E65100; padding: 4px 10px; border-radius: 12px; font-weight: bold;">
+            ${isVictoryRedeemedThisWeek ? '✅ แลกสิทธิ์สัปดาห์นี้แล้ว (1/1)' : '🏆 ปลดล็อกสิทธิ์ผู้ชนะ'}
+          </span>
+        </div>
+
         <p style="font-size: 0.85rem; color: #795548; margin-bottom: 15px;">
-          รางวัลพิเศษแลกฟรี 0 เหรียญ สำหรับผู้ชนะการแข่งขันรายสัปดาห์!
+          สิทธิพิเศษของผู้ชนะ: สั่งซื้อเมนูจากร้านของ <b>${partnerName}</b> โดยใช้ <b>เหรียญของ ${partnerName}</b> (จำกัด 1 ครั้ง/สัปดาห์)
         </p>
 
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          ${VICTORY_SHOP_ITEMS.map(v => `
-            <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 14px; border: 1px solid #FFE0B2;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="font-size: 1.6rem;">${v.emoji}</div>
-                <div style="font-weight: bold; color: #4E342E; font-size: 0.9rem;">${v.name}</div>
-              </div>
-              <button class="btn-redeem-victory" data-id="${v.id}" style="background: #FFA726; color: white; border: none; padding: 8px 14px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; cursor: pointer; font-family: 'Kanit';">
-                แลกรางวัล 🏆
-              </button>
-            </div>
-          `).join('')}
+        <div id="partner-victory-shop-container" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="text-align: center; color: #aaa; padding: 15px;">⏳ กำลังโหลดสินค้าจากร้านของ ${partnerName}...</div>
         </div>
       </div>
 
@@ -129,7 +134,7 @@ export function renderShopSection(container, onUpdateCallback) {
             <label for="coupon-select" style="display: block; font-size: 0.85rem; font-weight: bold; color: #555; margin-bottom: 6px;">
               🎟️ เลือกใช้คูปองส่วนลด:
             </label>
-            <select id="coupon-select" style="width: 100%; padding: 10px; border: 1.5px solid #FFC0CB; border-radius: 12px; font-size: 0.9rem; background: white; box-sizing: border-radius;">
+            <select id="coupon-select" style="width: 100%; padding: 10px; border: 1.5px solid #FFC0CB; border-radius: 12px; font-size: 0.9rem; background: white; box-sizing: border-box;">
               <option value="">ไม่ใช้คูปอง</option>
               ${availableCoupons.map(c => `
                 <option value="${c.id}">${c.title} (${c.code})</option>
@@ -156,7 +161,65 @@ export function renderShopSection(container, onUpdateCallback) {
     </div>
   `;
 
-  // Buy Item Click Handler -> Opens Modal
+  // Fetch and Render Partner Shop Items inside Victory Shop
+  const victoryContainer = container.querySelector('#partner-victory-shop-container');
+  if (victoryContainer) {
+    if (!partnerProfile) {
+      victoryContainer.innerHTML = `
+        <div style="text-align: center; color: #aaa; padding: 15px;">ยังไม่มีข้อมูลคู่รักเพื่อดึงรายการสินค้า</div>
+      `;
+    } else {
+      (async () => {
+        const { customItems: partnerCustom, coins: partnerCoins } = await loadPartnerShopItems(partnerProfile.id);
+        const allPartnerItems = [...DEFAULT_SHOP_ITEMS, ...partnerCustom];
+
+        victoryContainer.innerHTML = `
+          <div style="background: white; border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #FFE0B2;">
+            <span style="font-size: 0.85rem; color: #5D4037;">เหรียญของ ${partnerName} ปัจจุบัน:</span>
+            <span style="font-size: 1.1rem; font-weight: bold; color: #E65100;">🪙 ${partnerCoins} เหรียญ</span>
+          </div>
+
+          ${allPartnerItems.map(item => `
+            <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 14px; border: 1px solid #FFE0B2;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="font-size: 1.8rem;">${item.emoji}</div>
+                <div>
+                  <div style="font-weight: bold; color: #4E342E; font-size: 0.9rem;">${item.name}</div>
+                  <div style="font-size: 0.8rem; color: #E65100; font-weight: 500;">ราคา: ${item.price} เหรียญ (ใช้เหรียญของ ${partnerName})</div>
+                </div>
+              </div>
+              <button class="btn-redeem-victory" data-id="${item.id}" data-name="${item.name}" data-emoji="${item.emoji}" data-price="${item.price}" ${isVictoryRedeemedThisWeek || partnerCoins < item.price ? 'disabled' : ''} style="background: ${isVictoryRedeemedThisWeek ? '#CCCCCC' : (partnerCoins >= item.price ? '#FFA726' : '#E0E0E0')}; color: white; border: none; padding: 8px 14px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; cursor: ${!isVictoryRedeemedThisWeek && partnerCoins >= item.price ? 'pointer' : 'default'}; font-family: 'Kanit';">
+                ${isVictoryRedeemedThisWeek ? 'แลกแล้ว' : (partnerCoins >= item.price ? 'สั่งซื้อด้วยเหรียญแฟน 👑' : 'เหรียญแฟนไม่พอ')}
+              </button>
+            </div>
+          `).join('')}
+        `;
+
+        // Victory Item Redeem Handler
+        victoryContainer.querySelectorAll('.btn-redeem-victory').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const itemId = e.currentTarget.getAttribute('data-id');
+            const itemName = e.currentTarget.getAttribute('data-name');
+            const itemEmoji = e.currentTarget.getAttribute('data-emoji');
+            const itemPrice = parseInt(e.currentTarget.getAttribute('data-price'), 10);
+
+            if (confirm(`คุณต้องการใช้เหรียญของ ${partnerName} จำนวน ${itemPrice} เหรียญ เพื่อสั่งซื้อ "${itemEmoji} ${itemName}" ใช่หรือไม่?`)) {
+              const res = await redeemVictoryItem({
+                item: { id: itemId, name: itemName, emoji: itemEmoji, price: itemPrice },
+                loserId: partnerProfile.id
+              });
+
+              if (res.success && typeof onUpdateCallback === 'function') {
+                onUpdateCallback();
+              }
+            }
+          });
+        });
+      })();
+    }
+  }
+
+  // Buy Item Click Handler -> Opens Modal for Standard/Custom Shop
   container.querySelectorAll('.btn-buy-item').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.getAttribute('data-id');
@@ -247,20 +310,6 @@ export function renderShopSection(container, onUpdateCallback) {
       const id = e.currentTarget.getAttribute('data-id');
       if (confirm('คุณต้องการลบรายการสินค้านี้ใช่หรือไม่?')) {
         const res = await deleteCustomShopItem(id);
-        if (res.success && typeof onUpdateCallback === 'function') {
-          onUpdateCallback();
-        }
-      }
-    });
-  });
-
-  // Redeem Victory Item Handler (Properly Awaited!)
-  container.querySelectorAll('.btn-redeem-victory').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const id = e.currentTarget.getAttribute('data-id');
-      const item = VICTORY_SHOP_ITEMS.find(v => v.id === id);
-      if (item) {
-        const res = await redeemVictoryItem(item);
         if (res.success && typeof onUpdateCallback === 'function') {
           onUpdateCallback();
         }
