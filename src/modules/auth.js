@@ -5,7 +5,7 @@ import { showToast } from '../ui/toast.js';
 // Convert simple username to internal email
 function usernameToEmail(username) {
   const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-  return `${cleanUsername}@icena.app`;
+  return `${cleanUsername}.icena@gmail.com`;
 }
 
 // Sign Up with Username & Password
@@ -32,6 +32,11 @@ export async function signUpWithUsername(username, password, displayName) {
       console.error('Sign up error:', error);
       showToast(error.message || 'ไม่สามารถสร้างไอดีได้', 'error');
       return { success: false, error };
+    }
+
+    // If session is null, attempt instant sign in
+    if (!data.session) {
+      return await signInWithUsername(username, password);
     }
 
     showToast(`สร้างไอดี ${displayName} สำเร็จแล้วค่ะ! 🐱`, 'success');
