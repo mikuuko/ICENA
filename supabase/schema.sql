@@ -298,35 +298,9 @@ CREATE POLICY "storage: delete own prefix"
     );
 
 -- --------------------------------------------------------
--- 12. AUTOMATIC PROFILE & GAME STATE CREATION TRIGGER
+-- 12. PROFILES & GAME STATE CREATION
+-- Handled cleanly by client application on login
 -- --------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER 
-SECURITY DEFINER
-SET search_path = public
-LANGUAGE plpgsql AS $$
-BEGIN
-    INSERT INTO public.profiles (id, display_name, avatar_url)
-    VALUES (
-        NEW.id,
-        COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1)),
-        'https://api.dicebear.com/7.x/adventurer/svg?seed=' || COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1))
-    )
-    ON CONFLICT (id) DO NOTHING;
-
-    INSERT INTO public.user_game_state (user_id, streak, coins)
-    VALUES (NEW.id, 0, 0)
-    ON CONFLICT (user_id) DO NOTHING;
-
-    RETURN NEW;
-EXCEPTION WHEN OTHERS THEN
-    RETURN NEW;
-END;
-$$;
-
-CREATE OR REPLACE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- --------------------------------------------------------
 -- 13. RPC FUNCTION: award_workout_coins (Server-Side Only)

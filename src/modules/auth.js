@@ -100,20 +100,33 @@ export async function signOutUser() {
 // Load current user's profile and partner's profile
 export async function loadProfiles(userId) {
   try {
-    // 1. Get current user profile
-    const { data: myProfile, error: myErr } = await supabase
+    // 1. Get current user profile or auto-create if missing
+    let { data: myProfile, error: myErr } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
-    if (myErr) {
-      console.error('Error fetching my profile:', myErr);
-    } else {
-      state.profile = myProfile;
+    if (!myProfile) {
+      const displayName = state.user?.user_metadata?.display_name || state.user?.email?.split('@')[0] || 'Member';
+      const avatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(displayName)}`;
+
+      const { data: createdProfile } = await supabase
+        .from('profiles')
+        .upsert({ id: userId, display_name: displayName, avatar_url: avatarUrl })
+        .select()
+        .single();
+
+      await supabase
+        .from('user_game_state')
+        .upsert({ user_id: userId, streak: 0, coins: 0 });
+
+      myProfile = createdProfile;
     }
 
-    // 2. Get partner profile (read all authenticated policy from Phase 1)
+    state.profile = myProfile;
+
+    // 2. Get partner profile
     const { data: allProfiles, error: allErr } = await supabase
       .from('profiles')
       .select('*')
