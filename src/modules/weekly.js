@@ -80,14 +80,16 @@ export async function getWeeklyHistory() {
       .order('week_start', { ascending: false });
 
     if (error) {
-      console.error('Error fetching weekly competitions history:', error);
+      if (error.code !== 'PGRST205') {
+        console.warn('Weekly competitions history not available:', error.message);
+      }
       return [];
     }
 
     state.weeklyHistory = data || [];
     return state.weeklyHistory;
   } catch (err) {
-    console.error('Unexpected error loading weekly history:', err);
     return [];
   }
 }
+

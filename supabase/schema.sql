@@ -486,3 +486,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- --------------------------------------------------------
+-- 15. WEEKLY COMPETITIONS TABLE
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.weekly_competitions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    week_start DATE NOT NULL,
+    user1_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user2_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user1_score INTEGER NOT NULL DEFAULT 0,
+    user2_score INTEGER NOT NULL DEFAULT 0,
+    winner_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    is_finalized BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT weekly_competitions_week_unique UNIQUE (week_start)
+);
+
+ALTER TABLE public.weekly_competitions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "weekly_competitions: read all authenticated"
+    ON public.weekly_competitions FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "weekly_competitions: insert authenticated"
+    ON public.weekly_competitions FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "weekly_competitions: update authenticated"
+    ON public.weekly_competitions FOR UPDATE TO authenticated USING (true);
+
+
