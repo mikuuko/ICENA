@@ -6,9 +6,10 @@ import { renderSleepSection } from './sleepUI.js';
 import { renderQuestsSection } from './questsUI.js';
 import { renderShopSection } from './shopUI.js';
 import { renderAnalyticsSection } from './analyticsUI.js';
+import { renderWeeklySection } from './weeklyUI.js';
 
 let activeAuthTab = 'signin'; // 'signin' or 'signup'
-let activeAppTab = 'workout'; // 'workout', 'diet', 'sleep', 'quests', 'shop', or 'analytics'
+let activeAppTab = 'workout'; // 'workout', 'diet', 'sleep', 'quests', 'shop', 'analytics', or 'weekly'
 
 // Render Auth Screen (Login / Register)
 export function renderAuthScreen(container) {
@@ -116,24 +117,27 @@ export function renderAppView(container) {
       </header>
 
       <!-- App Navigation Bar -->
-      <nav style="display: grid; grid-template-columns: repeat(6, 1fr); background: white; margin: 15px 10px 0 10px; padding: 4px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); gap: 2px;">
-        <button id="nav-workout" style="background: ${activeAppTab === 'workout' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'workout' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.7rem; transition: all 0.2s;">
+      <nav style="display: grid; grid-template-columns: repeat(7, 1fr); background: white; margin: 15px 5px 0 5px; padding: 4px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); gap: 2px;">
+        <button id="nav-workout" style="background: ${activeAppTab === 'workout' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'workout' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
           🏃‍♂️ ออกกำลัง
         </button>
-        <button id="nav-diet" style="background: ${activeAppTab === 'diet' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'diet' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.7rem; transition: all 0.2s;">
+        <button id="nav-diet" style="background: ${activeAppTab === 'diet' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'diet' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
           🥗 อาหาร
         </button>
-        <button id="nav-sleep" style="background: ${activeAppTab === 'sleep' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'sleep' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.7rem; transition: all 0.2s;">
+        <button id="nav-sleep" style="background: ${activeAppTab === 'sleep' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'sleep' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
           😴 การนอน
         </button>
-        <button id="nav-quests" style="background: ${activeAppTab === 'quests' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'quests' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.7rem; transition: all 0.2s;">
+        <button id="nav-quests" style="background: ${activeAppTab === 'quests' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'quests' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
           🏆 ภารกิจ
         </button>
-        <button id="nav-shop" style="background: ${activeAppTab === 'shop' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'shop' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.7rem; transition: all 0.2s;">
+        <button id="nav-shop" style="background: ${activeAppTab === 'shop' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'shop' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
           🛒 ร้านค้า
         </button>
-        <button id="nav-analytics" style="background: ${activeAppTab === 'analytics' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'analytics' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.7rem; transition: all 0.2s;">
+        <button id="nav-analytics" style="background: ${activeAppTab === 'analytics' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'analytics' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
           📊 วิเคราะห์
+        </button>
+        <button id="nav-weekly" style="background: ${activeAppTab === 'weekly' ? '#FF9EAA' : 'transparent'}; color: ${activeAppTab === 'weekly' ? 'white' : '#666'}; border: none; padding: 8px 1px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; font-size: 0.65rem; transition: all 0.2s;">
+          ⚔️ แข่งขัน
         </button>
       </nav>
 
@@ -178,6 +182,11 @@ export function renderAppView(container) {
     renderAppView(container);
   });
 
+  container.querySelector('#nav-weekly')?.addEventListener('click', () => {
+    activeAppTab = 'weekly';
+    renderAppView(container);
+  });
+
   // Render Selected Module Component
   const moduleContainer = container.querySelector('#module-container');
   if (moduleContainer) {
@@ -193,9 +202,12 @@ export function renderAppView(container) {
       renderShopSection(moduleContainer, () => renderAppView(container));
     } else if (activeAppTab === 'analytics') {
       renderAnalyticsSection(moduleContainer, () => renderAppView(container));
+    } else if (activeAppTab === 'weekly') {
+      renderWeeklySection(moduleContainer, () => renderAppView(container));
     }
   }
 }
+
 
 
 
