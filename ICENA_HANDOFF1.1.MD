@@ -370,10 +370,10 @@ Endpoint: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-fla
 
 | เฟส | ชื่อ | สถานะ | หมายเหตุ |
 |:----|:-----|:------|:---------|
-| **0** | Setup (git init, Supabase Anon Key, Gemini API Key) | ⏳ รอเริ่ม | ต้องการ 2 keys จากผู้ใช้ + git init ก่อนอย่างอื่น |
-| **1** | Database Schema (รวม Storage bucket + RLS) | ⏳ รอ Phase 0 |  |
-| **2** | Auth Module | ⏳ รอ Phase 1 |  |
-| **3** | State Management | ⏳ รอ Phase 2 |  |
+| **0** | Setup (git init, Supabase Anon Key, Gemini API Key) | ✅ สำเร็จ | `git init`, `.env`, `package.json`, `vite.config.js` ครบถ้วน |
+| **1** | Database Schema (รวม Storage bucket + RLS) | ✅ สำเร็จ | 10 ตารางหลัก + Storage bucket `user-uploads` + RLS + RPC `award_workout_coins` รันแล้ว |
+| **2** | Auth Module | ✅ สำเร็จ | เข้าสู่ระบบด้วย Username (`Oil`/`Ice`) + รหัสผ่าน (`170201`), แปลงเป็น `*.icena@gmail.com` เบื้องหลัง |
+| **3** | State Management | ⏳ รอเริ่ม |  |
 | **4** | Workout Module | ⏳ รอ Phase 3 |  |
 | **5** | Health Logging (รวม storage.js + Gemini vision) | ⏳ รอ Phase 4 |  |
 | **6** | Streak + Quests | ⏳ รอ Phase 5 |  |
