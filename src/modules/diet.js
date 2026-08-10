@@ -2,6 +2,7 @@ import { supabase } from '../supabase.js';
 import { state } from '../store/state.js';
 import { uploadImage } from './storage.js';
 import { showToast } from '../ui/toast.js';
+import { callGeminiAPI } from './gemini.js';
 
 // Helper to convert File to Base64
 function fileToBase64(file) {
@@ -16,67 +17,6 @@ function fileToBase64(file) {
   });
 }
 
-// Helper to execute Gemini API with model fallback
-async function callGeminiAPI(prompt, base64Image = null, mimeType = 'image/jpeg') {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    showToast('กรุณาตั้งค่า VITE_GEMINI_API_KEY ก่อนใช้งาน AI ค่ะ', 'warning');
-    return null;
-  }
-
-  const candidateModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash-lite'];
-
-  for (const model of candidateModels) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const parts = [{ text: prompt }];
-      if (base64Image) {
-        parts.push({
-          inline_data: {
-            mime_type: mimeType,
-            data: base64Image
-          }
-        });
-      }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts }] })
-      });
-
-      if (response.status === 404) {
-        console.warn(`Gemini model ${model} returned 404, trying fallback model...`);
-        continue;
-      }
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`Gemini API error (${model}):`, errText);
-        showToast(`Gemini API Error (${response.status}): โปรดเช็ค API Key หรือโควต้า`, 'error');
-        return null;
-      }
-
-      const resData = await response.json();
-      const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-
-      try {
-        const jsonResult = JSON.parse(cleanedText);
-        return jsonResult;
-      } catch (parseErr) {
-        console.error('Failed to parse Gemini JSON output:', rawText);
-        showToast('AI ประมวลผลตอบกลับในรูปแบบที่ไม่ถูกต้อง', 'error');
-        return null;
-      }
-    } catch (netErr) {
-      console.error(`Network error calling Gemini API (${model}):`, netErr);
-    }
-  }
-
-  showToast('ไม่สามารถเชื่อมต่อ Gemini API ได้ (โปรดตรวจสอบ API Key)', 'error');
-  return null;
-}
 
 // Analyze food photo using Gemini AI Vision
 export async function analyzeFoodImage(imageFile) {

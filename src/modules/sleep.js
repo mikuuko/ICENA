@@ -2,6 +2,7 @@ import { supabase } from '../supabase.js';
 import { state } from '../store/state.js';
 import { uploadImage } from './storage.js';
 import { showToast } from '../ui/toast.js';
+import { callGeminiAPI } from './gemini.js';
 
 // Helper to convert File to Base64
 function fileToBase64(file) {
@@ -13,20 +14,16 @@ function fileToBase64(file) {
   });
 }
 
-// Analyze sleep report screenshot using Gemini AI Vision (gemini-3.5-flash-lite)
+// Analyze sleep report screenshot using Gemini AI Vision
 export async function analyzeSleepImage(imageFile) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey || !imageFile) {
-    showToast('กรุณาตั้งค่า VITE_GEMINI_API_KEY ก่อนใช้งาน AI Vision ค่ะ', 'warning');
+  if (!imageFile) {
+    showToast('กรุณาเลือกรูปภาพผลการนอนหลับก่อนสแกนค่ะ', 'warning');
     return null;
   }
 
   try {
     const base64Data = await fileToBase64(imageFile);
     const mimeType = imageFile.type || 'image/jpeg';
-    const model = 'gemini-3.5-flash-lite';
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
     const prompt = `คุณคือ AI ผู้เชี่ยวชาญด้านการนอนประจำแอป ICENA (โค้ชเหมียว 🐱) จงอ่านสกรีนช็อตผลการนอนหลับนี้แล้วตอบกลับเป็น JSON เท่านั้น โดยไม่ต้องมีข้อความเปิดปิดหรือ Markdown codeblock formatting ใดๆ โครงสร้าง JSON:
 {
   "sleep_time": "YYYY-MM-DDTHH:MM",
@@ -36,39 +33,10 @@ export async function analyzeSleepImage(imageFile) {
 }
 (คุณภาพ quality เลือกจาก 'poor': แย่, 'fair': ปานกลาง, 'good': ดี, 'excellent': ดีมาก)`;
 
-    const payload = {
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: base64Data
-              }
-            }
-          ]
-        }
-      ]
-    };
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      showToast('วิเคราะห์รูปการนอนไม่สำเร็จ (API Error)', 'error');
-      return null;
+    const result = await callGeminiAPI(prompt, base64Data, mimeType);
+    if (result) {
+      showToast('วิเคราะห์ผลการนอนหลับด้วย Gemini AI สำเร็จ! 😴✨', 'success');
     }
-
-    const resData = await response.json();
-    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(cleanedText);
-
-    showToast('วิเคราะห์ผลการนอนหลับด้วย Gemini AI สำเร็จ! 😴✨', 'success');
     return result;
   } catch (err) {
     console.error('Failed to analyze sleep image:', err);

@@ -1,6 +1,7 @@
 import { supabase } from '../supabase.js';
 import { state } from '../store/state.js';
 import { showToast } from '../ui/toast.js';
+import { callGeminiAPI } from './gemini.js';
 
 // Calculate Activity Heatmap data for last N days
 export function getActivityHeatmapData(daysCount = 30) {
@@ -102,22 +103,13 @@ export async function loadLatestDoctorReport() {
   }
 }
 
-// Generate AI Doctor Report using Gemini 3.5 Flash Lite
+// Generate AI Doctor Report using Gemini
 export async function generateDoctorReport() {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    showToast('กรุณาตั้งค่า VITE_GEMINI_API_KEY ก่อนสร้างรายงานสุขภาพค่ะ', 'warning');
-    return null;
-  }
-
   const metrics = getHealthMetricsSummary();
   const streak = state.gameState.streak || 0;
   const userName = state.profile?.display_name || 'คุณผู้ใช้';
 
   try {
-    const model = 'gemini-3.5-flash-lite';
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
     const prompt = `คุณคือ "โค้ชเหมียว 🐱" แพทย์ผู้เชี่ยวชาญและวิเคราะห์สุขภาพประจำแอป ICENA จงวิเคราะห์ข้อมูลสุขภาพของคุณ ${userName} ในช่วง 7 วันที่ผ่านมาดังนี้:
 - ออกกำลังกายรวม: ${metrics.weeklyWorkoutCount} ครั้ง (${metrics.totalWorkoutMinutes} นาที)
 - ออกกำลังกายต่อเนื่อง (Streak): ${streak} วัน
@@ -136,25 +128,8 @@ export async function generateDoctorReport() {
 }
 (เกรด grade เลือกจาก 'A': ดีเยี่ยม, 'B': ดี, 'C': ต้องปรับปรุง, 'D': ควรระวังเรื่องสุขภาพ)`;
 
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }]
-    };
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      showToast('สร้างรายงานสุขภาพไม่สำเร็จ (API Error)', 'error');
-      return null;
-    }
-
-    const resData = await response.json();
-    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const reportData = JSON.parse(cleanedText);
+    const reportData = await callGeminiAPI(prompt);
+    if (!reportData) return null;
 
     state.latestDoctorReport = {
       ...reportData,
