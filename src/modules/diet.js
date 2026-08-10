@@ -16,20 +16,78 @@ function fileToBase64(file) {
   });
 }
 
-// Analyze food photo using Gemini AI Vision (gemini-3.5-flash-lite)
-export async function analyzeFoodImage(imageFile) {
+// Helper to execute Gemini API with model fallback
+async function callGeminiAPI(prompt, base64Image = null, mimeType = 'image/jpeg') {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
-    showToast('กรุณาตั้งค่า VITE_GEMINI_API_KEY ก่อนใช้งาน AI Vision ค่ะ', 'warning');
+    showToast('กรุณาตั้งค่า VITE_GEMINI_API_KEY ก่อนใช้งาน AI ค่ะ', 'warning');
+    return null;
+  }
+
+  const candidateModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash-lite'];
+
+  for (const model of candidateModels) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const parts = [{ text: prompt }];
+      if (base64Image) {
+        parts.push({
+          inline_data: {
+            mime_type: mimeType,
+            data: base64Image
+          }
+        });
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }] })
+      });
+
+      if (response.status === 404) {
+        console.warn(`Gemini model ${model} returned 404, trying fallback model...`);
+        continue;
+      }
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`Gemini API error (${model}):`, errText);
+        showToast(`Gemini API Error (${response.status}): โปรดเช็ค API Key หรือโควต้า`, 'error');
+        return null;
+      }
+
+      const resData = await response.json();
+      const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+      try {
+        const jsonResult = JSON.parse(cleanedText);
+        return jsonResult;
+      } catch (parseErr) {
+        console.error('Failed to parse Gemini JSON output:', rawText);
+        showToast('AI ประมวลผลตอบกลับในรูปแบบที่ไม่ถูกต้อง', 'error');
+        return null;
+      }
+    } catch (netErr) {
+      console.error(`Network error calling Gemini API (${model}):`, netErr);
+    }
+  }
+
+  showToast('ไม่สามารถเชื่อมต่อ Gemini API ได้ (โปรดตรวจสอบ API Key)', 'error');
+  return null;
+}
+
+// Analyze food photo using Gemini AI Vision
+export async function analyzeFoodImage(imageFile) {
+  if (!imageFile) {
+    showToast('กรุณาเลือกรูปภาพอาหารก่อนสแกนค่ะ', 'warning');
     return null;
   }
 
   try {
     const base64Data = await fileToBase64(imageFile);
     const mimeType = imageFile.type || 'image/jpeg';
-    const model = 'gemini-3.5-flash-lite';
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
     const prompt = `คุณคือ AI นักโภชนาการประจำแอป ICENA (โค้ชเหมียว 🐱) จงวิเคราะห์รูปอาหารนี้แล้วตอบกลับเป็น JSON เท่านั้น โดยไม่ต้องมีข้อความเปิดปิดหรือ Markdown codeblock formatting ใดๆ โครงสร้าง JSON:
 {
   "food_name": "ชื่ออาหารภาษาไทยกระชับ",
@@ -39,52 +97,13 @@ export async function analyzeFoodImage(imageFile) {
 }
 (เกรด score เลือกจาก A: ดีมากต่อสุขภาพ, B: ดี, C: ปานกลาง/แป้งสูง, D: ของทอด/น้ำตาลสูง)`;
 
-    const payload = {
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: base64Data
-              }
-            }
-          ]
-        }
-      ]
-    };
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (response.status === 404) {
-      console.error('Gemini API Returned 404 Not Found');
-      showToast('Gemini API Model 404: โปรดตรวจสอบรุ่นโมเดลที่ https://ai.google.dev/gemini-api/docs/models', 'error');
-      return null;
+    const result = await callGeminiAPI(prompt, base64Data, mimeType);
+    if (result) {
+      showToast('วิเคราะห์เมนูอาหารด้วย Gemini AI สำเร็จ! 🐱✨', 'success');
     }
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini API error:', errText);
-      showToast('วิเคราะห์รูปอาหารไม่สำเร็จ (API Error)', 'error');
-      return null;
-    }
-
-    const resData = await response.json();
-    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
-    // Clean codeblock formatting if returned
-    const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(cleanedText);
-
-    showToast('วิเคราะห์เมนูอาหารด้วย Gemini AI สำเร็จ! 🐱✨', 'success');
     return result;
   } catch (err) {
-    console.error('Failed to analyze food image with Gemini:', err);
+    console.error('Failed to analyze food image:', err);
     showToast('เกิดข้อผิดพลาดในการวิเคราะห์รูปอาหาร', 'error');
     return null;
   }
@@ -92,44 +111,25 @@ export async function analyzeFoodImage(imageFile) {
 
 // Analyze food calories & score from text name using Gemini AI
 export async function analyzeFoodText(foodName) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey || !foodName) {
+  if (!foodName || !foodName.trim()) {
+    showToast('กรุณากรอกชื่ออาหารก่อนกดประเมินค่ะ', 'warning');
     return null;
   }
 
-  try {
-    const model = 'gemini-3.5-flash-lite';
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-    const prompt = `คุณคือ AI นักโภชนาการประจำแอป ICENA (โค้ชเหมียว 🐱) จงประเมินเมนูอาหารชื่อ "${foodName}" แล้วตอบกลับเป็น JSON เท่านั้น โดยไม่ต้องมีข้อความเปิดปิดหรือ Markdown codeblock formatting ใดๆ โครงสร้าง JSON:
+  const prompt = `คุณคือ AI นักโภชนาการประจำแอป ICENA (โค้ชเหมียว 🐱) จงประเมินเมนูอาหารชื่อ "${foodName.trim()}" แล้วตอบกลับเป็น JSON เท่านั้น โดยไม่ต้องมีข้อความเปิดปิดหรือ Markdown codeblock formatting ใดๆ โครงสร้าง JSON:
 {
-  "food_name": "${foodName}",
+  "food_name": "${foodName.trim()}",
   "calories": 450,
   "score": "B",
   "summary": "คำแนะนำโภชนาการสั้นๆ"
 }
 (เกรด score เลือกจาก A: ดีมากต่อสุขภาพ, B: ดี, C: ปานกลาง/แป้งสูง, D: ของทอด/หวานจัด)`;
 
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }]
-    };
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) return null;
-
-    const resData = await response.json();
-    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanedText);
-  } catch (err) {
-    console.error('Failed to analyze food text:', err);
-    return null;
+  const result = await callGeminiAPI(prompt);
+  if (result) {
+    showToast(`AI ประเมินเมนู "${foodName}" สำเร็จ! 🤖✨`, 'success');
   }
+  return result;
 }
 
 // Load diet logs for current user

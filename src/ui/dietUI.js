@@ -1,6 +1,7 @@
 import { state } from '../store/state.js';
 import { logDiet, deleteDietLog, analyzeFoodImage, analyzeFoodText } from '../modules/diet.js';
 import { getSignedImageUrl } from '../modules/storage.js';
+import { showToast } from './toast.js';
 
 const MEAL_TYPES = [
   { id: 'breakfast', name: 'มื้อเช้า', emoji: '🌅' },
@@ -18,7 +19,7 @@ const SCORE_COLORS = {
 
 export function renderDietSection(container, onUpdateCallback) {
   let selectedFile = null;
-  let currentCalories = 400;
+  let currentCalories = 0;
   let currentScore = 'B';
   let aiResultData = {};
 
@@ -81,8 +82,8 @@ export function renderDietSection(container, onUpdateCallback) {
           <div id="ai-evaluation-box" style="background: #FFF9FA; border: 1px solid #FFE0E6; border-radius: 14px; padding: 12px 15px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between;">
             <div>
               <div style="font-size: 0.8rem; color: #888;">ผลการประเมินจาก Gemini AI 🐱</div>
-              <div id="ai-eval-summary" style="font-size: 0.9rem; font-weight: 500; color: #444; margin-top: 2px;">
-                ประมาณการ: <b id="eval-kcal" style="color: #FF6B8B;">400</b> kcal • เกรด <span id="eval-score" style="background: #2196F3; color: white; padding: 1px 8px; border-radius: 10px; font-size: 0.8rem;">Grade B</span>
+              <div id="ai-eval-summary" style="font-size: 0.9rem; font-weight: 500; color: #666; margin-top: 2px;">
+                ประมาณการ: <b id="eval-kcal" style="color: #FF6B8B;">0</b> kcal • เกรด <span id="eval-score" style="background: #9E9E9E; color: white; padding: 1px 8px; border-radius: 10px; font-size: 0.8rem;">รอประเมิน</span>
               </div>
             </div>
             <div style="font-size: 1.5rem;">🤖</div>
@@ -134,15 +135,23 @@ export function renderDietSection(container, onUpdateCallback) {
   radioInputs.forEach(r => r.addEventListener('change', updateRadioStyles));
 
   // Helper to update UI evaluation badge
-  const updateEvaluationBadge = (kcal, score) => {
-    currentCalories = kcal;
-    currentScore = score;
+  const updateEvaluationBadge = (kcal, score, summary = '') => {
+    currentCalories = parseInt(kcal, 10) || 0;
+    currentScore = score || 'B';
     const kcalElem = container.querySelector('#eval-kcal');
     const scoreElem = container.querySelector('#eval-score');
-    if (kcalElem) kcalElem.innerText = kcal;
+    const evalSummaryContainer = container.querySelector('#ai-eval-summary');
+
+    if (kcalElem) kcalElem.innerText = currentCalories;
     if (scoreElem) {
-      scoreElem.innerText = `Grade ${score}`;
-      scoreElem.style.background = SCORE_COLORS[score] || '#2196F3';
+      scoreElem.innerText = `Grade ${currentScore}`;
+      scoreElem.style.background = SCORE_COLORS[currentScore] || '#2196F3';
+    }
+    if (evalSummaryContainer && summary) {
+      evalSummaryContainer.innerHTML = `
+        ประมาณการ: <b id="eval-kcal" style="color: #FF6B8B;">${currentCalories}</b> kcal • เกรด <span id="eval-score" style="background: ${SCORE_COLORS[currentScore] || '#2196F3'}; color: white; padding: 1px 8px; border-radius: 10px; font-size: 0.8rem;">Grade ${currentScore}</span>
+        <div style="font-size: 0.8rem; color: #555; margin-top: 4px; font-style: italic;">"${summary}"</div>
+      `;
     }
   };
 
@@ -181,15 +190,21 @@ export function renderDietSection(container, onUpdateCallback) {
     if (result) {
       aiResultData = result;
       if (result.food_name) container.querySelector('#food_name').value = result.food_name;
-      updateEvaluationBadge(result.calories || 400, result.score || 'B');
+      updateEvaluationBadge(result.calories || 0, result.score || 'B', result.summary || '');
       aiStatusText.innerText = `วิเคราะห์สำเร็จ: ${result.summary || ''}`;
     }
   });
 
   // Text AI Estimation Handler
   container.querySelector('#btn-text-ai')?.addEventListener('click', async () => {
-    const foodName = container.querySelector('#food_name')?.value;
-    if (!foodName) return;
+    const foodNameInput = container.querySelector('#food_name');
+    const foodName = foodNameInput?.value?.trim();
+
+    if (!foodName) {
+      showToast('กรุณากรอกชื่ออาหารก่อนกดประเมินค่ะ', 'warning');
+      foodNameInput?.focus();
+      return;
+    }
 
     const btnTextAI = container.querySelector('#btn-text-ai');
     btnTextAI.disabled = true;
@@ -201,7 +216,7 @@ export function renderDietSection(container, onUpdateCallback) {
 
     if (result) {
       aiResultData = result;
-      updateEvaluationBadge(result.calories || 400, result.score || 'B');
+      updateEvaluationBadge(result.calories || 0, result.score || 'B', result.summary || '');
     }
   });
 
