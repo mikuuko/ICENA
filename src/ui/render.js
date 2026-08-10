@@ -1,5 +1,7 @@
 import { state } from '../store/state.js';
 import { signInWithUsername, signUpWithUsername, signOutUser } from '../modules/auth.js';
+import { clearAllTestData } from '../store/loader.js';
+import { showToast } from './toast.js';
 import { renderWorkoutSection } from './workoutUI.js';
 import { renderDietSection } from './dietUI.js';
 import { renderSleepSection } from './sleepUI.js';
@@ -96,23 +98,34 @@ export function renderAppView(container) {
       <header style="background: linear-gradient(135deg, #FF9EAA, #FFB7C5); color: white; padding: 25px 20px 20px 20px; text-align: center; border-radius: 0 0 24px 24px; position: relative; box-shadow: 0 4px 15px rgba(255,158,170,0.3);">
         <h2 style="font-family: 'Mali', cursive; margin: 0; font-size: 1.6rem;">🐱 ICENA</h2>
         <p style="font-size: 0.95rem; margin-top: 4px; opacity: 0.95;">สวัสดีคุณ ${profileName} 💕 (คู่กับ ${partnerName})</p>
-        <button id="btn-logout" style="position: absolute; right: 15px; top: 22px; background: rgba(255,255,255,0.25); border: none; color: white; padding: 6px 12px; border-radius: 12px; cursor: pointer; font-family: 'Kanit', sans-serif; font-size: 0.85rem;">
-          ออกจากระบบ
-        </button>
+        <div style="position: absolute; right: 12px; top: 18px; display: flex; gap: 6px; align-items: center;">
+          <button id="btn-reset-test-data" title="ล้างข้อมูลทดสอบทั้งหมด" style="background: rgba(255,255,255,0.25); border: none; color: white; padding: 5px 9px; border-radius: 10px; cursor: pointer; font-family: 'Kanit', sans-serif; font-size: 0.78rem; font-weight: 500;">
+            🧹 ล้างข้อมูลเทส
+          </button>
+          <button id="btn-logout" style="background: rgba(255,255,255,0.25); border: none; color: white; padding: 5px 9px; border-radius: 10px; cursor: pointer; font-family: 'Kanit', sans-serif; font-size: 0.78rem; font-weight: 500;">
+            ออกจากระบบ
+          </button>
+        </div>
 
         <!-- Global Header Stats Bar -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; background: rgba(255,255,255,0.2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 16px; padding: 10px;">
           <div>
             <div style="font-size: 0.75rem; opacity: 0.9;">เหรียญสะสม</div>
-            <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px;">🪙 ${state.gameState.coins}</div>
+            <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <img src="/icons/Coins.png" style="width: 20px; height: 20px; object-fit: contain;" /> ${state.gameState.coins}
+            </div>
           </div>
           <div>
             <div style="font-size: 0.75rem; opacity: 0.9;">ออกกำลังกาย</div>
-            <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px;">🔥 ${state.gameState.streak} วัน</div>
+            <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <img src="/icons/FireStreak.png" style="width: 20px; height: 20px; object-fit: contain;" /> ${state.gameState.streak} วัน
+            </div>
           </div>
           <div>
             <div style="font-size: 0.75rem; opacity: 0.9;">ประวัติออกกำลัง</div>
-            <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px;">🏃‍♂️ ${state.workouts.length} ครั้ง</div>
+            <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <img src="/icons/Workout.png" style="width: 20px; height: 20px; object-fit: contain;" /> ${state.workouts.length} ครั้ง
+            </div>
           </div>
         </div>
       </header>
@@ -126,31 +139,31 @@ export function renderAppView(container) {
       <nav class="ios-bottom-nav">
         <div class="ios-nav-scroll hide-scrollbar">
           <button id="nav-workout" class="ios-nav-item ${activeAppTab === 'workout' ? 'active' : ''}">
-            <span style="font-size: 1.25rem;">🏃‍♂️</span>
+            <img src="/icons/Workout.png" class="nav-icon-img" alt="ออกกำลัง" />
             <span>ออกกำลัง</span>
           </button>
           <button id="nav-diet" class="ios-nav-item ${activeAppTab === 'diet' ? 'active' : ''}">
-            <span style="font-size: 1.25rem;">🥗</span>
+            <img src="/icons/Diet.png" class="nav-icon-img" alt="อาหาร" />
             <span>อาหาร</span>
           </button>
           <button id="nav-sleep" class="ios-nav-item ${activeAppTab === 'sleep' ? 'active' : ''}">
-            <span style="font-size: 1.25rem;">😴</span>
+            <img src="/icons/Sleep.png" class="nav-icon-img" alt="การนอน" />
             <span>การนอน</span>
           </button>
           <button id="nav-quests" class="ios-nav-item ${activeAppTab === 'quests' ? 'active' : ''}">
-            <span style="font-size: 1.25rem;">🏆</span>
+            <img src="/icons/Quests.png" class="nav-icon-img" alt="ภารกิจ" />
             <span>ภารกิจ</span>
           </button>
           <button id="nav-shop" class="ios-nav-item ${activeAppTab === 'shop' ? 'active' : ''}">
-            <span style="font-size: 1.25rem;">🛒</span>
+            <img src="/icons/Shop.png" class="nav-icon-img" alt="ร้านค้า" />
             <span>ร้านค้า</span>
           </button>
           <button id="nav-analytics" class="ios-nav-item ${activeAppTab === 'analytics' ? 'active' : ''}">
-            <span style="font-size: 1.25rem;">📊</span>
+            <img src="/icons/Analytics.png" class="nav-icon-img" alt="วิเคราะห์" />
             <span>วิเคราะห์</span>
           </button>
           <button id="nav-weekly" class="ios-nav-item ${activeAppTab === 'weekly' ? 'active' : ''}">
-            <span style="font-size: 1.25rem;">⚔️</span>
+            <img src="/icons/Quests.png" class="nav-icon-img" alt="แข่งขัน" />
             <span>แข่งขัน</span>
           </button>
         </div>
@@ -160,6 +173,18 @@ export function renderAppView(container) {
 
   document.getElementById('btn-logout')?.addEventListener('click', async () => {
     await signOutUser();
+  });
+
+  document.getElementById('btn-reset-test-data')?.addEventListener('click', async () => {
+    if (confirm('คุณต้องการล้างข้อมูลทดสอบทั้งหมด (ประวัติออกกำลังกาย, มื้ออาหาร, การนอน, เหรียญ, สินค้ากำหนดเอง) ใช่หรือไม่?')) {
+      const res = await clearAllTestData();
+      if (res.success) {
+        showToast('ล้างข้อมูลทดสอบเรียบร้อยแล้วค่ะ 🧹✨', 'success');
+        renderAppView(container);
+      } else {
+        showToast('เกิดข้อผิดพลาดในการล้างข้อมูล', 'error');
+      }
+    }
   });
 
   // Navigation Event Listeners

@@ -18,6 +18,54 @@ export const VICTORY_SHOP_ITEMS = [
   { id: 'victory_dinner',  emoji: '🕯️', name: 'สิทธิพิเศษ: ดินเนอร์มื้อพิเศษฟรี', price: 0 }
 ];
 
+const LOCAL_STORAGE_KEY_DELETED_DEFAULTS = 'icena_deleted_default_items';
+
+// Get list of deleted default item IDs
+export function getDeletedDefaultItemIds() {
+  try {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY_DELETED_DEFAULTS);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+// Get non-deleted default shop items
+export function getVisibleDefaultShopItems() {
+  const deletedIds = getDeletedDefaultItemIds();
+  return DEFAULT_SHOP_ITEMS.filter(item => !deletedIds.includes(item.id));
+}
+
+// Delete default shop item (hide via localStorage)
+export function deleteDefaultShopItem(itemId) {
+  if (!itemId) return { success: false };
+  try {
+    const deletedIds = getDeletedDefaultItemIds();
+    if (!deletedIds.includes(itemId)) {
+      deletedIds.push(itemId);
+      localStorage.setItem(LOCAL_STORAGE_KEY_DELETED_DEFAULTS, JSON.stringify(deletedIds));
+    }
+    showToast('ลบรายการอาหาร/รางวัลมาตรฐานเรียบร้อยแล้วค่ะ 🗑️', 'info');
+    return { success: true };
+  } catch (err) {
+    console.error('Error deleting default shop item:', err);
+    showToast('เกิดข้อผิดพลาดในการลบรายการ', 'error');
+    return { success: false, error: err };
+  }
+}
+
+// Restore all deleted default shop items
+export function restoreDefaultShopItems() {
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY_DELETED_DEFAULTS);
+    showToast('คืนค่ารายการอาหาร/รางวัลมาตรฐานทั้งหมดเรียบร้อยแล้วค่ะ 🔄', 'success');
+    return { success: true };
+  } catch (err) {
+    console.error('Error restoring default shop items:', err);
+    return { success: false, error: err };
+  }
+}
+
 // Load Custom Shop Items
 export async function loadCustomShopItems() {
   if (!state.user) return [];

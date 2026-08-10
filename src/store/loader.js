@@ -127,3 +127,50 @@ export function resetState() {
   state.isLoaded = false;
   console.log('🧹 State reset complete');
 }
+
+// Clear all user test data in Supabase & LocalStorage
+export async function clearAllTestData() {
+  if (!state.user) return { success: false, error: 'Not authenticated' };
+
+  try {
+    const userId = state.user.id;
+
+    // Delete workouts, diet, sleep, custom shop, victory redemptions, weekly stats, doctor reports
+    await Promise.all([
+      supabase.from('workouts').delete().eq('user_id', userId),
+      supabase.from('diet_logs').delete().eq('user_id', userId),
+      supabase.from('sleep_logs').delete().eq('user_id', userId),
+      supabase.from('custom_shop_items').delete().eq('user_id', userId),
+      supabase.from('victory_redemptions').delete().eq('user_id', userId),
+      supabase.from('user_weekly_stats').delete().eq('user_id', userId),
+      supabase.from('doctor_reports').delete().eq('user_id', userId),
+      supabase.from('coin_transactions').delete().eq('user_id', userId)
+    ]);
+
+    // Reset user game state
+    await supabase
+      .from('user_game_state')
+      .update({
+        streak: 0,
+        coins: 0,
+        last_workout_date: null,
+        milestone_claims: [],
+        active_quests: [],
+        coupons: [],
+        achievements: []
+      })
+      .eq('user_id', userId);
+
+    // Clear local storage overrides
+    localStorage.removeItem('icena_deleted_default_items');
+
+    // Reload app data
+    await loadAppData(userId);
+
+    console.log('🧹 Test data reset complete');
+    return { success: true };
+  } catch (err) {
+    console.error('Error clearing test data:', err);
+    return { success: false, error: err };
+  }
+}

@@ -1,6 +1,10 @@
 import { state } from '../store/state.js';
 import {
   DEFAULT_SHOP_ITEMS,
+  getVisibleDefaultShopItems,
+  getDeletedDefaultItemIds,
+  deleteDefaultShopItem,
+  restoreDefaultShopItems,
   purchaseShopItem,
   addCustomShopItem,
   deleteCustomShopItem,
@@ -17,6 +21,9 @@ export function renderShopSection(container, onUpdateCallback) {
   const partnerProfile = state.partnerProfile;
   const partnerName = partnerProfile?.display_name || 'คู่ของคุณ';
   const weekStart = getWeekStartDate();
+
+  const visibleDefaultItems = getVisibleDefaultShopItems();
+  const deletedDefaultIds = getDeletedDefaultItemIds();
 
   // Check if user already redeemed a Victory Shop item this week
   const isVictoryRedeemedThisWeek = (state.victoryRedemptions || []).some(
@@ -41,23 +48,41 @@ export function renderShopSection(container, onUpdateCallback) {
 
       <!-- Standard Shop Items Grid -->
       <div class="card" style="background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; border: 1px solid #FFE0E6;">
-        <h3 style="color: #FF6B8B; margin-bottom: 15px; font-family: 'Mali', cursive; display: flex; align-items: center; gap: 8px;">
-          <span>🥤</span> รายการอาหารและรางวัลมาตรฐาน
+        <h3 style="color: #FF6B8B; margin-bottom: 15px; font-family: 'Mali', cursive; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <span><span>🥤</span> รายการอาหารและรางวัลมาตรฐาน (${visibleDefaultItems.length})</span>
+          ${deletedDefaultIds.length > 0 ? `
+            <button id="btn-restore-defaults" title="คืนค่ารายการที่ลบ" style="background: #FFF0F4; border: 1.5px solid #FF9EAA; color: #FF6B8B; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; cursor: pointer; font-family: 'Kanit';">
+              🔄 คืนค่ารายการมาตรฐาน (${deletedDefaultIds.length})
+            </button>
+          ` : ''}
         </h3>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">
-          ${DEFAULT_SHOP_ITEMS.map(item => `
-            <div style="background: #FFF5F7; border-radius: 16px; padding: 15px; text-align: center; border: 1px solid #FFE0E6;">
-              <div style="font-size: 2.8rem; margin-bottom: 6px;">${item.emoji}</div>
-              <div style="font-weight: bold; font-size: 0.9rem; color: #333; margin-bottom: 2px;">${item.name}</div>
-              <div style="font-size: 0.75rem; color: #888; margin-bottom: 8px;">~${item.kcal} kcal</div>
-              <div style="font-size: 1rem; font-weight: bold; color: #FF9EAA; margin-bottom: 10px;">${item.price} 🪙</div>
-              <button class="btn-buy-item" data-id="${item.id}" data-type="default" style="width: 100%; background: #FF9EAA; color: white; border: none; padding: 8px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; cursor: pointer; font-family: 'Kanit';">
-                สั่งซื้อ 🛒
-              </button>
-            </div>
-          `).join('')}
-        </div>
+        ${visibleDefaultItems.length === 0 ? `
+          <div style="text-align: center; color: #aaa; padding: 25px 10px;">
+            <div style="font-size: 2rem; margin-bottom: 6px;">🗑️</div>
+            <p style="font-size: 0.9rem; margin-bottom: 10px;">คุณได้ลบรายการอาหารและรางวัลมาตรฐานทั้งหมดแล้ว</p>
+            <button id="btn-restore-defaults" style="background: #FF9EAA; color: white; border: none; padding: 8px 16px; border-radius: 12px; font-weight: bold; cursor: pointer; font-family: 'Kanit';">
+              🔄 คืนค่ารายการมาตรฐานทั้งหมด
+            </button>
+          </div>
+        ` : `
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">
+            ${visibleDefaultItems.map(item => `
+              <div style="background: #FFF5F7; border-radius: 16px; padding: 15px; text-align: center; border: 1px solid #FFE0E6; position: relative;">
+                <button class="btn-delete-default" data-id="${item.id}" title="ลบรายการมาตรฐาน" style="position: absolute; right: 6px; top: 6px; background: none; border: none; font-size: 0.9rem; cursor: pointer; color: #FF6B6B;">
+                  🗑️
+                </button>
+                <div style="font-size: 2.8rem; margin-bottom: 6px;">${item.emoji}</div>
+                <div style="font-weight: bold; font-size: 0.9rem; color: #333; margin-bottom: 2px;">${item.name}</div>
+                <div style="font-size: 0.75rem; color: #888; margin-bottom: 8px;">~${item.kcal} kcal</div>
+                <div style="font-size: 1rem; font-weight: bold; color: #FF9EAA; margin-bottom: 10px;">${item.price} 🪙</div>
+                <button class="btn-buy-item" data-id="${item.id}" data-type="default" style="width: 100%; background: #FF9EAA; color: white; border: none; padding: 8px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; cursor: pointer; font-family: 'Kanit';">
+                  สั่งซื้อ 🛒
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        `}
       </div>
 
       <!-- Custom Shop Items Card -->
@@ -171,7 +196,8 @@ export function renderShopSection(container, onUpdateCallback) {
     } else {
       (async () => {
         const { customItems: partnerCustom, coins: partnerCoins } = await loadPartnerShopItems(partnerProfile.id);
-        const allPartnerItems = [...DEFAULT_SHOP_ITEMS, ...partnerCustom];
+        const visibleDefault = getVisibleDefaultShopItems();
+        const allPartnerItems = [...visibleDefault, ...partnerCustom];
 
         victoryContainer.innerHTML = `
           <div style="background: white; border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #FFE0B2;">
@@ -218,6 +244,31 @@ export function renderShopSection(container, onUpdateCallback) {
       })();
     }
   }
+
+  // Delete Default Item Handler
+  container.querySelectorAll('.btn-delete-default').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.getAttribute('data-id');
+      if (confirm('คุณต้องการลบรายการอาหารและรางวัลมาตรฐานนี้ใช่หรือไม่?')) {
+        const res = deleteDefaultShopItem(id);
+        if (res.success && typeof onUpdateCallback === 'function') {
+          onUpdateCallback();
+        }
+      }
+    });
+  });
+
+  // Restore Default Items Handler
+  container.querySelectorAll('#btn-restore-defaults').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (confirm('คุณต้องการคืนค่ารายการอาหารและรางวัลมาตรฐานทั้งหมดที่ลบไปใช่หรือไม่?')) {
+        const res = restoreDefaultShopItems();
+        if (res.success && typeof onUpdateCallback === 'function') {
+          onUpdateCallback();
+        }
+      }
+    });
+  });
 
   // Buy Item Click Handler -> Opens Modal for Standard/Custom Shop
   container.querySelectorAll('.btn-buy-item').forEach(btn => {

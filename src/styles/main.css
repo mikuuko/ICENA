@@ -26,7 +26,11 @@
 
 body {
   font-family: var(--font-family);
-  background: #FAF7F8;
+  background-color: #FFF0F4;
+  background-image: url('/cat_bg.png');
+  background-repeat: repeat;
+  background-size: 360px 360px;
+  background-attachment: fixed;
   color: var(--text-color);
   min-height: 100vh;
   width: 100%;
@@ -207,9 +211,9 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #FAF7F8;
+  background: rgba(255, 240, 244, 0.55);
   padding-top: max(0px, env(safe-area-inset-top));
-  padding-bottom: max(80px, calc(75px + env(safe-area-inset-bottom)));
+  padding-bottom: max(95px, calc(85px + env(safe-area-inset-bottom)));
   margin: 0;
 }
 
@@ -232,12 +236,12 @@ button {
   left: 0;
   right: 0;
   width: 100%;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 158, 170, 0.25);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
-  z-index: 1000;
+  border-top: 1px solid rgba(255, 158, 170, 0.3);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
   padding-bottom: max(8px, env(safe-area-inset-bottom));
   padding-top: 6px;
 }
@@ -292,6 +296,27 @@ button {
 
 .ios-nav-item:active {
   transform: scale(0.95);
+}
+
+.nav-icon-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+  transition: transform 0.2s ease;
+}
+
+.ios-nav-item.active .nav-icon-img {
+  transform: scale(1.1);
+  filter: drop-shadow(0 2px 6px rgba(255, 255, 255, 0.5));
+}
+
+.stat-icon-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  vertical-align: middle;
+  display: inline-block;
 }
 
 
