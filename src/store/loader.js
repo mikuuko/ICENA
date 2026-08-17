@@ -91,8 +91,10 @@ export async function loadAppData(userId) {
     state.weeklyStats = myWeeklyRes.data || null;
     state.partnerWeeklyStats = partnerWeeklyRes.data || null;
 
-    // Process Shop Items
-    state.customShopItems = shopRes.data || [];
+    // Process Shop Items (Regular & Victory)
+    const allShopItems = shopRes.data || [];
+    state.customShopItems = allShopItems.filter(item => !item.is_victory && item.user_id === userId);
+    state.victoryShopItems = allShopItems.filter(item => item.is_victory === true);
 
     // Process Victory Redemptions
     state.victoryRedemptions = redemptionsRes.data || [];
@@ -123,6 +125,7 @@ export function resetState() {
   state.weeklyStats = null;
   state.partnerWeeklyStats = null;
   state.customShopItems = [];
+  state.victoryShopItems = [];
   state.victoryRedemptions = [];
   state.isLoaded = false;
   console.log('🧹 State reset complete');

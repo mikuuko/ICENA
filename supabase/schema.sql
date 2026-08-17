@@ -201,11 +201,15 @@ CREATE TABLE IF NOT EXISTS public.custom_shop_items (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     emoji TEXT NOT NULL DEFAULT '🎁',
-    price INTEGER NOT NULL CHECK (price > 0),
+    price INTEGER NOT NULL CHECK (price >= 0),
     kcal INTEGER DEFAULT 0,
+    is_victory BOOLEAN NOT NULL DEFAULT false,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migration helpers if table already exists
+ALTER TABLE public.custom_shop_items ADD COLUMN IF NOT EXISTS is_victory BOOLEAN NOT NULL DEFAULT false;
 
 ALTER TABLE public.custom_shop_items ENABLE ROW LEVEL SECURITY;
 
@@ -441,7 +445,7 @@ BEGIN
     END IF;
 
     -- Check loser coins
-    SELECT coins INTO v_loser_coins
+    SELECT COALESCE(coins, 0) INTO v_loser_coins
     FROM public.user_game_state
     WHERE user_id = p_loser_id;
 

@@ -12,13 +12,17 @@ export const DEFAULT_SHOP_ITEMS = [
   { id: 'buffet',   emoji: '🍲', name: 'บุฟเฟ่ต์ชาบู',    price: 500, kcal: 2500 }
 ];
 
-export const VICTORY_SHOP_ITEMS = [
-  { id: 'victory_massage', emoji: '💆‍♀️', name: 'สิทธิพิเศษ: นวดผ่อนคลาย 1 ชั่วโมง', price: 0 },
-  { id: 'victory_movie',   emoji: '🎬', name: 'สิทธิพิเศษ: เลือกหนังดูแบบ VIP 1 เรื่อง', price: 0 },
-  { id: 'victory_dinner',  emoji: '🕯️', name: 'สิทธิพิเศษ: ดินเนอร์มื้อพิเศษฟรี', price: 0 }
+export const DEFAULT_VICTORY_ITEMS = [
+  { id: 'victory_massage', emoji: '💆‍♀️', name: 'สิทธิพิเศษ: นวดผ่อนคลาย 1 ชั่วโมง', price: 0, is_default: true },
+  { id: 'victory_movie',   emoji: '🎬', name: 'สิทธิพิเศษ: เลือกหนังดูแบบ VIP 1 เรื่อง', price: 0, is_default: true },
+  { id: 'victory_dinner',  emoji: '🕯️', name: 'สิทธิพิเศษ: ดินเนอร์มื้อพิเศษฟรี', price: 0, is_default: true },
+  { id: 'victory_chores',  emoji: '🧹', name: 'สิทธิพิเศษ: สั่งให้อีกฝ่ายทำงานบ้าน 1 วัน', price: 0, is_default: true }
 ];
 
+export const VICTORY_SHOP_ITEMS = DEFAULT_VICTORY_ITEMS;
+
 const LOCAL_STORAGE_KEY_DELETED_DEFAULTS = 'icena_deleted_default_items';
+const LOCAL_STORAGE_KEY_DELETED_VICTORY = 'icena_deleted_victory_items';
 
 // Get list of deleted default item IDs
 export function getDeletedDefaultItemIds() {
@@ -66,7 +70,52 @@ export function restoreDefaultShopItems() {
   }
 }
 
-// Load Custom Shop Items
+// Get list of deleted default victory item IDs
+export function getDeletedDefaultVictoryItemIds() {
+  try {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY_DELETED_VICTORY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+// Get non-deleted default victory items
+export function getVisibleDefaultVictoryItems() {
+  const deletedIds = getDeletedDefaultVictoryItemIds();
+  return DEFAULT_VICTORY_ITEMS.filter(item => !deletedIds.includes(item.id));
+}
+
+// Delete default victory item
+export function deleteDefaultVictoryItem(itemId) {
+  if (!itemId) return { success: false };
+  try {
+    const deletedIds = getDeletedDefaultVictoryItemIds();
+    if (!deletedIds.includes(itemId)) {
+      deletedIds.push(itemId);
+      localStorage.setItem(LOCAL_STORAGE_KEY_DELETED_VICTORY, JSON.stringify(deletedIds));
+    }
+    showToast('ลบรายการสิทธิพิเศษมาตรฐานเรียบร้อยแล้วค่ะ 🗑️', 'info');
+    return { success: true };
+  } catch (err) {
+    console.error('Error deleting default victory item:', err);
+    return { success: false, error: err };
+  }
+}
+
+// Restore all deleted default victory items
+export function restoreDefaultVictoryItems() {
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY_DELETED_VICTORY);
+    showToast('คืนค่ารายการสิทธิพิเศษมาตรฐานทั้งหมดเรียบร้อยแล้วค่ะ 🔄', 'success');
+    return { success: true };
+  } catch (err) {
+    console.error('Error restoring default victory items:', err);
+    return { success: false, error: err };
+  }
+}
+
+// Load Custom Shop Items (Regular user items)
 export async function loadCustomShopItems() {
   if (!state.user) return [];
 
@@ -74,6 +123,7 @@ export async function loadCustomShopItems() {
     const { data, error } = await supabase
       .from('custom_shop_items')
       .select('*')
+      .eq('user_id', state.user.id)
       .eq('is_active', true)
       .order('created_at', { ascending: true });
 
@@ -82,7 +132,7 @@ export async function loadCustomShopItems() {
       return [];
     }
 
-    state.customShopItems = data || [];
+    state.customShopItems = (data || []).filter(item => !item.is_victory);
     return state.customShopItems;
   } catch (err) {
     console.error('Unexpected error loading custom shop items:', err);
@@ -90,9 +140,32 @@ export async function loadCustomShopItems() {
   }
 }
 
+// Load All Victory Shop Items (Both user & partner custom rewards)
+export async function loadVictoryShopItems() {
+  try {
+    const { data, error } = await supabase
+      .from('custom_shop_items')
+      .select('*')
+      .eq('is_victory', true)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error loading victory shop items:', error);
+      return [];
+    }
+
+    state.victoryShopItems = data || [];
+    return state.victoryShopItems;
+  } catch (err) {
+    console.error('Unexpected error loading victory shop items:', err);
+    return [];
+  }
+}
+
 // Fetch Partner's Shop Items & Coin Balance (for Victory Shop)
 export async function loadPartnerShopItems(partnerId) {
-  if (!partnerId) return { customItems: [], coins: 0 };
+  if (!partnerId) return { customItems: [], victoryItems: [], coins: 0 };
 
   try {
     const [customRes, stateRes] = await Promise.all([
@@ -100,17 +173,19 @@ export async function loadPartnerShopItems(partnerId) {
       supabase.from('user_game_state').select('coins').eq('user_id', partnerId).maybeSingle()
     ]);
 
+    const allPartnerCustom = customRes.data || [];
     return {
-      customItems: customRes.data || [],
+      customItems: allPartnerCustom.filter(item => !item.is_victory),
+      victoryItems: allPartnerCustom.filter(item => item.is_victory === true),
       coins: stateRes.data?.coins || 0
     };
   } catch (err) {
     console.error('Error fetching partner shop items:', err);
-    return { customItems: [], coins: 0 };
+    return { customItems: [], victoryItems: [], coins: 0 };
   }
 }
 
-// Add Custom Shop Item
+// Add Custom Shop Item (Regular item)
 export async function addCustomShopItem({ name, emoji = '🎁', price, kcal = 0 }) {
   if (!state.user) return { success: false };
 
@@ -129,6 +204,7 @@ export async function addCustomShopItem({ name, emoji = '🎁', price, kcal = 0 
         emoji: emoji || '🎁',
         price: parsedPrice,
         kcal: parseInt(kcal, 10) || 0,
+        is_victory: false,
         is_active: true
       })
       .select()
@@ -150,7 +226,48 @@ export async function addCustomShopItem({ name, emoji = '🎁', price, kcal = 0 
   }
 }
 
-// Delete Custom Shop Item
+// Add Victory Shop Item (Special winner reward / promise)
+export async function addVictoryShopItem({ name, emoji = '👑', price = 0 }) {
+  if (!state.user) return { success: false };
+
+  const parsedPrice = parseInt(price, 10);
+  if (!name || isNaN(parsedPrice) || parsedPrice < 0) {
+    showToast('กรุณากรอกชื่อรางวัลและราคาเหรียญให้ถูกต้อง (0 ขึ้นไป) ค่ะ', 'warning');
+    return { success: false, error: 'Invalid fields' };
+  }
+
+  try {
+    const { data: newItem, error } = await supabase
+      .from('custom_shop_items')
+      .insert({
+        user_id: state.user.id,
+        name,
+        emoji: emoji || '👑',
+        price: parsedPrice,
+        kcal: 0,
+        is_victory: true,
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Failed to add victory shop item:', error);
+      showToast('ไม่สามารถสร้างรายการรางวัล Victory Shop ได้', 'error');
+      return { success: false, error };
+    }
+
+    showToast(`เพิ่มรางวัล Victory "${name}" สำเร็จแล้วค่ะ 👑🎉`, 'success');
+    await loadVictoryShopItems();
+    return { success: true, data: newItem };
+  } catch (err) {
+    console.error('Unexpected error adding victory shop item:', err);
+    showToast('เกิดข้อผิดพลาดในการสร้างรางวัล Victory', 'error');
+    return { success: false, error: err };
+  }
+}
+
+// Delete Custom Shop Item (Regular or Victory)
 export async function deleteCustomShopItem(itemId) {
   if (!state.user || !itemId) return { success: false };
 
@@ -167,12 +284,12 @@ export async function deleteCustomShopItem(itemId) {
       return { success: false, error };
     }
 
-    showToast('ลบรายการสินค้าเรียบร้อยแล้วค่ะ 🗑️', 'info');
-    await loadCustomShopItems();
+    showToast('ลบรายการเรียบร้อยแล้วค่ะ 🗑️', 'info');
+    await Promise.all([loadCustomShopItems(), loadVictoryShopItems()]);
     return { success: true };
   } catch (err) {
     console.error('Unexpected error deleting custom shop item:', err);
-    showToast('เกิดข้อผิดพลาดในการลบรายการสินค้า', 'error');
+    showToast('เกิดข้อผิดพลาดในการลบรายการ', 'error');
     return { success: false, error: err };
   }
 }

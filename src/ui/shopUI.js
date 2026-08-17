@@ -5,9 +5,16 @@ import {
   getDeletedDefaultItemIds,
   deleteDefaultShopItem,
   restoreDefaultShopItems,
+  DEFAULT_VICTORY_ITEMS,
+  getVisibleDefaultVictoryItems,
+  getDeletedDefaultVictoryItemIds,
+  deleteDefaultVictoryItem,
+  restoreDefaultVictoryItems,
   purchaseShopItem,
   addCustomShopItem,
   deleteCustomShopItem,
+  addVictoryShopItem,
+  loadVictoryShopItems,
   loadPartnerShopItems,
   redeemVictoryItem
 } from '../modules/shop.js';
@@ -24,6 +31,9 @@ export function renderShopSection(container, onUpdateCallback) {
 
   const visibleDefaultItems = getVisibleDefaultShopItems();
   const deletedDefaultIds = getDeletedDefaultItemIds();
+
+  const visibleDefaultVictory = getVisibleDefaultVictoryItems();
+  const deletedVictoryIds = getDeletedDefaultVictoryItemIds();
 
   // Check if user already redeemed a Victory Shop item this week
   const isVictoryRedeemedThisWeek = (state.victoryRedemptions || []).some(
@@ -127,9 +137,9 @@ export function renderShopSection(container, onUpdateCallback) {
         `}
       </div>
 
-      <!-- Victory Shop Section (Partner Items + Loser Coins) -->
+      <!-- Victory Shop Section (Partner Items + Loser Coins + Victory Rewards) -->
       <div class="card" style="background: linear-gradient(135deg, #FFF9EB, #FFF3D6); border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; border: 1px solid #FFE0B2;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
           <h3 style="color: #F57C00; font-family: 'Mali', cursive; display: flex; align-items: center; gap: 8px; margin: 0;">
             <span>👑</span> Victory Shop (ร้านค้าของ ${partnerName})
           </h3>
@@ -139,8 +149,30 @@ export function renderShopSection(container, onUpdateCallback) {
         </div>
 
         <p style="font-size: 0.85rem; color: #795548; margin-bottom: 15px;">
-          สิทธิพิเศษของผู้ชนะ: สั่งซื้อเมนูจากร้านของ <b>${partnerName}</b> โดยใช้ <b>เหรียญของ ${partnerName}</b> (จำกัด 1 ครั้ง/สัปดาห์)
+          สิทธิพิเศษของผู้ชนะประจำสัปดาห์: เลือกแลกรางวัลสิทธิพิเศษ หรือสั่งซื้อเมนูจากร้านของ <b>${partnerName}</b> โดยใช้ <b>เหรียญของ ${partnerName}</b> (จำกัด 1 ครั้ง/สัปดาห์)
         </p>
+
+        <!-- Form Add Victory Shop Item -->
+        <form id="add-victory-item-form" style="background: #FFFDF7; border: 1.5px dashed #FFA726; border-radius: 16px; padding: 15px; margin-bottom: 18px;">
+          <div style="font-weight: bold; color: #E65100; font-size: 0.9rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <span>👑 + เพิ่มรางวัลสิทธิพิเศษผู้ชนะ (Victory Reward)</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 60px 1fr 110px; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="victory_emoji" placeholder="👑" value="👑" style="padding: 8px; border: 1.5px solid #FFE0B2; border-radius: 10px; text-align: center; font-size: 1.2rem; background: white;">
+            <input type="text" id="victory_name" placeholder="ชื่อรางวัล เช่น นวดหลัง 30 นาที, เลี้ยงชาบู" required style="padding: 8px; border: 1.5px solid #FFE0B2; border-radius: 10px; font-size: 0.9rem; background: white;">
+            <input type="number" id="victory_price" placeholder="เหรียญ (0=ฟรี)" min="0" value="0" required style="padding: 8px; border: 1.5px solid #FFE0B2; border-radius: 10px; font-size: 0.9rem; background: white;">
+          </div>
+          <!-- Quick Emoji Selector -->
+          <div style="display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 4px;">
+            <span style="font-size: 0.75rem; color: #8D6E63; align-self: center; white-space: nowrap;">ไอคอนลัด:</span>
+            ${['👑', '💆‍♀️', '🎬', '🍽️', '☕', '🎁', '🧹', '🎮', '🚗', '💕'].map(em => `
+              <button type="button" class="btn-quick-victory-emoji" data-emoji="${em}" style="background: white; border: 1px solid #FFE0B2; border-radius: 8px; padding: 2px 7px; font-size: 1rem; cursor: pointer;">${em}</button>
+            `).join('')}
+          </div>
+          <button type="submit" style="width: 100%; background: linear-gradient(135deg, #FFA726, #FB8C00); color: white; border: none; padding: 9px; border-radius: 10px; font-weight: bold; cursor: pointer; font-family: 'Kanit'; box-shadow: 0 3px 10px rgba(255,167,38,0.3);">
+            เพิ่มรางวัล Victory 👑
+          </button>
+        </form>
 
         <div id="partner-victory-shop-container" style="display: flex; flex-direction: column; gap: 10px;">
           <div style="text-align: center; color: #aaa; padding: 15px;">⏳ กำลังโหลดสินค้าจากร้านของ ${partnerName}...</div>
@@ -186,6 +218,17 @@ export function renderShopSection(container, onUpdateCallback) {
     </div>
   `;
 
+  // Quick Emoji Button Listener for Victory Form
+  container.querySelectorAll('.btn-quick-victory-emoji').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const emoji = e.currentTarget.getAttribute('data-emoji');
+      const input = container.querySelector('#victory_emoji');
+      if (input && emoji) {
+        input.value = emoji;
+      }
+    });
+  });
+
   // Fetch and Render Partner Shop Items inside Victory Shop
   const victoryContainer = container.querySelector('#partner-victory-shop-container');
   if (victoryContainer) {
@@ -195,31 +238,126 @@ export function renderShopSection(container, onUpdateCallback) {
       `;
     } else {
       (async () => {
-        const { customItems: partnerCustom, coins: partnerCoins } = await loadPartnerShopItems(partnerProfile.id);
-        const visibleDefault = getVisibleDefaultShopItems();
-        const allPartnerItems = [...visibleDefault, ...partnerCustom];
+        const { customItems: partnerCustom, victoryItems: partnerVictory, coins: partnerCoins } = await loadPartnerShopItems(partnerProfile.id);
+        const myVictoryItems = state.victoryShopItems || [];
+        
+        // Merge and deduplicate custom victory items
+        const allCustomVictory = [...myVictoryItems];
+        (partnerVictory || []).forEach(pv => {
+          if (!allCustomVictory.some(mv => mv.id === pv.id)) {
+            allCustomVictory.push(pv);
+          }
+        });
 
-        victoryContainer.innerHTML = `
-          <div style="background: white; border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #FFE0B2;">
+        const visibleDefaultFood = getVisibleDefaultShopItems();
+        const visibleDefaultVictoryList = getVisibleDefaultVictoryItems();
+
+        const victoryContent = `
+          <!-- Partner Coins Status -->
+          <div style="background: white; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #FFE0B2; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
             <span style="font-size: 0.85rem; color: #5D4037;">เหรียญของ ${partnerName} ปัจจุบัน:</span>
             <span style="font-size: 1.1rem; font-weight: bold; color: #E65100;">🪙 ${partnerCoins} เหรียญ</span>
           </div>
 
-          ${allPartnerItems.map(item => `
-            <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 14px; border: 1px solid #FFE0B2;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="font-size: 1.8rem;">${item.emoji}</div>
-                <div>
-                  <div style="font-weight: bold; color: #4E342E; font-size: 0.9rem;">${item.name}</div>
-                  <div style="font-size: 0.8rem; color: #E65100; font-weight: 500;">ราคา: ${item.price} เหรียญ (ใช้เหรียญของ ${partnerName})</div>
-                </div>
-              </div>
-              <button class="btn-redeem-victory" data-id="${item.id}" data-name="${item.name}" data-emoji="${item.emoji}" data-price="${item.price}" ${isVictoryRedeemedThisWeek || partnerCoins < item.price ? 'disabled' : ''} style="background: ${isVictoryRedeemedThisWeek ? '#CCCCCC' : (partnerCoins >= item.price ? '#FFA726' : '#E0E0E0')}; color: white; border: none; padding: 8px 14px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; cursor: ${!isVictoryRedeemedThisWeek && partnerCoins >= item.price ? 'pointer' : 'default'}; font-family: 'Kanit';">
-                ${isVictoryRedeemedThisWeek ? 'แลกแล้ว' : (partnerCoins >= item.price ? 'สั่งซื้อด้วยเหรียญแฟน 👑' : 'เหรียญแฟนไม่พอ')}
-              </button>
+          <!-- Section 1: Standard Preset Victory Rewards -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-size: 0.85rem; font-weight: bold; color: #E65100; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+              <span>✨ สิทธิพิเศษมาตรฐาน (${visibleDefaultVictoryList.length})</span>
+              ${deletedVictoryIds.length > 0 ? `
+                <button id="btn-restore-default-victory" title="คืนค่าสิทธิพิเศษที่ลบ" style="background: white; border: 1px solid #FFA726; color: #E65100; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer;">
+                  🔄 คืนค่า (${deletedVictoryIds.length})
+                </button>
+              ` : ''}
             </div>
-          `).join('')}
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${visibleDefaultVictoryList.map(item => `
+                <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 12px 14px; border-radius: 14px; border: 1px solid #FFE0B2; position: relative;">
+                  <button class="btn-delete-default-victory" data-id="${item.id}" title="ลบรายการมาตรฐาน" style="position: absolute; right: 6px; top: 6px; background: none; border: none; font-size: 0.85rem; cursor: pointer; color: #FF6B6B;">
+                    🗑️
+                  </button>
+                  <div style="display: flex; align-items: center; gap: 10px; max-width: 65%;">
+                    <div style="font-size: 1.8rem;">${item.emoji}</div>
+                    <div>
+                      <div style="font-weight: bold; color: #4E342E; font-size: 0.9rem;">${item.name}</div>
+                      <div style="font-size: 0.75rem; color: #2E7D32; font-weight: 500;">
+                        ${item.price === 0 ? '🎁 ฟรีสิทธิ์ผู้ชนะ (0 เหรียญ)' : `ราคา: ${item.price} เหรียญ`}
+                      </div>
+                    </div>
+                  </div>
+                  <button class="btn-redeem-victory" data-id="${item.id}" data-name="${item.name}" data-emoji="${item.emoji}" data-price="${item.price}" ${isVictoryRedeemedThisWeek || partnerCoins < item.price ? 'disabled' : ''} style="background: ${isVictoryRedeemedThisWeek ? '#CCCCCC' : (partnerCoins >= item.price ? 'linear-gradient(135deg, #FFA726, #FB8C00)' : '#E0E0E0')}; color: white; border: none; padding: 8px 12px; border-radius: 12px; font-size: 0.82rem; font-weight: bold; cursor: ${!isVictoryRedeemedThisWeek && partnerCoins >= item.price ? 'pointer' : 'default'}; font-family: 'Kanit'; white-space: nowrap;">
+                    ${isVictoryRedeemedThisWeek ? 'แลกแล้ว' : (partnerCoins >= item.price ? 'แลกรางวัล 👑' : 'เหรียญแฟนไม่พอ')}
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Section 2: Custom Victory Rewards Created by Users -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-size: 0.85rem; font-weight: bold; color: #E65100; margin-bottom: 8px;">
+              🎁 รางวัลสิทธิพิเศษที่คู่รักสร้างขึ้น (${allCustomVictory.length})
+            </div>
+
+            ${allCustomVictory.length === 0 ? `
+              <div style="background: white; border-radius: 12px; padding: 12px; text-align: center; color: #aaa; font-size: 0.82rem; border: 1px dashed #FFE0B2;">
+                ยังไม่มีรางวัลพิเศษที่สร้างเอง ลองเพิ่มรางวัลน่ารักๆ ด้านบนได้เลยค่ะ ✨
+              </div>
+            ` : `
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${allCustomVictory.map(item => `
+                  <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 12px 14px; border-radius: 14px; border: 1px solid #FFE0B2; position: relative;">
+                    ${item.user_id === state.user?.id ? `
+                      <button class="btn-delete-custom-victory" data-id="${item.id}" title="ลบรางวัลนี้" style="position: absolute; right: 6px; top: 6px; background: none; border: none; font-size: 0.85rem; cursor: pointer; color: #FF6B6B;">
+                        🗑️
+                      </button>
+                    ` : ''}
+                    <div style="display: flex; align-items: center; gap: 10px; max-width: 65%;">
+                      <div style="font-size: 1.8rem;">${item.emoji}</div>
+                      <div>
+                        <div style="font-weight: bold; color: #4E342E; font-size: 0.9rem;">${item.name}</div>
+                        <div style="font-size: 0.75rem; color: #E65100; font-weight: 500;">
+                          ${item.price === 0 ? '🎁 ฟรีสิทธิ์ผู้ชนะ (0 เหรียญ)' : `ราคา: ${item.price} เหรียญ (ใช้เหรียญของ ${partnerName})`}
+                        </div>
+                      </div>
+                    </div>
+                    <button class="btn-redeem-victory" data-id="${item.id}" data-name="${item.name}" data-emoji="${item.emoji}" data-price="${item.price}" ${isVictoryRedeemedThisWeek || partnerCoins < item.price ? 'disabled' : ''} style="background: ${isVictoryRedeemedThisWeek ? '#CCCCCC' : (partnerCoins >= item.price ? 'linear-gradient(135deg, #FFA726, #FB8C00)' : '#E0E0E0')}; color: white; border: none; padding: 8px 12px; border-radius: 12px; font-size: 0.82rem; font-weight: bold; cursor: ${!isVictoryRedeemedThisWeek && partnerCoins >= item.price ? 'pointer' : 'default'}; font-family: 'Kanit'; white-space: nowrap;">
+                      ${isVictoryRedeemedThisWeek ? 'แลกแล้ว' : (partnerCoins >= item.price ? 'แลกรางวัล 👑' : 'เหรียญแฟนไม่พอ')}
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+
+          <!-- Section 3: Partner Shop Menu Items -->
+          <div>
+            <div style="font-size: 0.85rem; font-weight: bold; color: #E65100; margin-bottom: 8px;">
+              🍲 สั่งซื้อเมนูอาหารจากร้านของ ${partnerName} (${partnerCustom.length + visibleDefaultFood.length})
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${[...partnerCustom, ...visibleDefaultFood].map(item => `
+                <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 12px 14px; border-radius: 14px; border: 1px solid #FFE0B2;">
+                  <div style="display: flex; align-items: center; gap: 10px; max-width: 65%;">
+                    <div style="font-size: 1.8rem;">${item.emoji}</div>
+                    <div>
+                      <div style="font-weight: bold; color: #4E342E; font-size: 0.9rem;">${item.name}</div>
+                      <div style="font-size: 0.75rem; color: #E65100; font-weight: 500;">
+                        ราคา: ${item.price} เหรียญ (ใช้เหรียญของ ${partnerName})
+                      </div>
+                    </div>
+                  </div>
+                  <button class="btn-redeem-victory" data-id="${item.id}" data-name="${item.name}" data-emoji="${item.emoji}" data-price="${item.price}" ${isVictoryRedeemedThisWeek || partnerCoins < item.price ? 'disabled' : ''} style="background: ${isVictoryRedeemedThisWeek ? '#CCCCCC' : (partnerCoins >= item.price ? 'linear-gradient(135deg, #FFA726, #FB8C00)' : '#E0E0E0')}; color: white; border: none; padding: 8px 12px; border-radius: 12px; font-size: 0.82rem; font-weight: bold; cursor: ${!isVictoryRedeemedThisWeek && partnerCoins >= item.price ? 'pointer' : 'default'}; font-family: 'Kanit'; white-space: nowrap;">
+                    ${isVictoryRedeemedThisWeek ? 'แลกแล้ว' : (partnerCoins >= item.price ? 'สั่งซื้อด้วยเหรียญแฟน 👑' : 'เหรียญแฟนไม่พอ')}
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
         `;
+
+        victoryContainer.innerHTML = victoryContent;
 
         // Victory Item Redeem Handler
         victoryContainer.querySelectorAll('.btn-redeem-victory').forEach(btn => {
@@ -227,14 +365,56 @@ export function renderShopSection(container, onUpdateCallback) {
             const itemId = e.currentTarget.getAttribute('data-id');
             const itemName = e.currentTarget.getAttribute('data-name');
             const itemEmoji = e.currentTarget.getAttribute('data-emoji');
-            const itemPrice = parseInt(e.currentTarget.getAttribute('data-price'), 10);
+            const itemPrice = parseInt(e.currentTarget.getAttribute('data-price'), 10) || 0;
 
-            if (confirm(`คุณต้องการใช้เหรียญของ ${partnerName} จำนวน ${itemPrice} เหรียญ เพื่อสั่งซื้อ "${itemEmoji} ${itemName}" ใช่หรือไม่?`)) {
+            const confirmMsg = itemPrice > 0
+              ? `คุณต้องการใช้สิทธิ์ผู้ชนะ และใช้เหรียญของ ${partnerName} จำนวน ${itemPrice} เหรียญ เพื่อแลกซื้อ "${itemEmoji} ${itemName}" ใช่หรือไม่?`
+              : `คุณต้องการใช้สิทธิ์ผู้ชนะ เพื่อแลกรางวัลสิทธิพิเศษ "${itemEmoji} ${itemName}" ใช่หรือไม่?`;
+
+            if (confirm(confirmMsg)) {
               const res = await redeemVictoryItem({
                 item: { id: itemId, name: itemName, emoji: itemEmoji, price: itemPrice },
                 loserId: partnerProfile.id
               });
 
+              if (res.success && typeof onUpdateCallback === 'function') {
+                onUpdateCallback();
+              }
+            }
+          });
+        });
+
+        // Delete Default Victory Item Handler
+        victoryContainer.querySelectorAll('.btn-delete-default-victory').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            if (confirm('คุณต้องการลบสิทธิพิเศษมาตรฐานนี้ใช่หรือไม่?')) {
+              const res = deleteDefaultVictoryItem(id);
+              if (res.success && typeof onUpdateCallback === 'function') {
+                onUpdateCallback();
+              }
+            }
+          });
+        });
+
+        // Restore Default Victory Items Handler
+        victoryContainer.querySelectorAll('#btn-restore-default-victory').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (confirm('คุณต้องการคืนค่าสิทธิพิเศษมาตรฐานทั้งหมดที่ลบไปใช่หรือไม่?')) {
+              const res = restoreDefaultVictoryItems();
+              if (res.success && typeof onUpdateCallback === 'function') {
+                onUpdateCallback();
+              }
+            }
+          });
+        });
+
+        // Delete Custom Victory Item Handler
+        victoryContainer.querySelectorAll('.btn-delete-custom-victory').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            if (confirm('คุณต้องการลบรางวัลสิทธิพิเศษนี้ใช่หรือไม่?')) {
+              const res = await deleteCustomShopItem(id);
               if (res.success && typeof onUpdateCallback === 'function') {
                 onUpdateCallback();
               }
@@ -342,7 +522,7 @@ export function renderShopSection(container, onUpdateCallback) {
     pendingPurchaseItem = null;
   });
 
-  // Add Custom Item Form Handler
+  // Add Custom Item Form Handler (Regular Shop)
   container.querySelector('#add-custom-item-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = container.querySelector('#custom_name')?.value;
@@ -355,7 +535,20 @@ export function renderShopSection(container, onUpdateCallback) {
     }
   });
 
-  // Delete Custom Item Handler
+  // Add Victory Shop Item Form Handler
+  container.querySelector('#add-victory-item-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = container.querySelector('#victory_name')?.value;
+    const emoji = container.querySelector('#victory_emoji')?.value || '👑';
+    const price = container.querySelector('#victory_price')?.value || 0;
+
+    const res = await addVictoryShopItem({ name, emoji, price });
+    if (res.success && typeof onUpdateCallback === 'function') {
+      onUpdateCallback();
+    }
+  });
+
+  // Delete Custom Item Handler (Regular Shop)
   container.querySelectorAll('.btn-delete-custom').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const id = e.currentTarget.getAttribute('data-id');

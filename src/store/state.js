@@ -18,6 +18,7 @@ export const state = {
   weeklyStats: null,
   partnerWeeklyStats: null,
   customShopItems: [],
+  victoryShopItems: [],
   victoryRedemptions: [],
   isLoaded: false
 };
