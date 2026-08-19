@@ -74,7 +74,7 @@ export async function loadWorkouts() {
 }
 
 // Log new workout and award coins via Server-Side RPC ONLY
-export async function logWorkout({ type, duration_minutes, intensity, note = '', image_file = null }) {
+export async function logWorkout({ type, duration_minutes, intensity, note = '', image_file = null, logged_at = null }) {
   if (!state.user) {
     showToast('กรุณาเข้าสู่ระบบก่อนบันทึกกิจกรรมค่ะ', 'warning');
     return { success: false, error: 'Not authenticated' };
@@ -97,16 +97,25 @@ export async function logWorkout({ type, duration_minutes, intensity, note = '',
     }
 
     // 1. Insert Workout Record
+    const insertPayload = {
+      user_id: state.user.id,
+      type,
+      duration_minutes: duration,
+      intensity,
+      note,
+      image_url
+    };
+
+    if (logged_at) {
+      const parsedDate = new Date(logged_at);
+      if (!isNaN(parsedDate.getTime())) {
+        insertPayload.logged_at = parsedDate.toISOString();
+      }
+    }
+
     const { data: newWorkout, error: insertErr } = await supabase
       .from('workouts')
-      .insert({
-        user_id: state.user.id,
-        type,
-        duration_minutes: duration,
-        intensity,
-        note,
-        image_url
-      })
+      .insert(insertPayload)
       .select()
       .single();
 

@@ -2,6 +2,7 @@ import { supabase } from '../supabase.js';
 import { state } from '../store/state.js';
 import { showToast } from '../ui/toast.js';
 import { callGeminiAPI } from './gemini.js';
+import { getLocalDateString } from './streak.js';
 
 // Calculate Activity Heatmap data for last N days
 export function getActivityHeatmapData(daysCount = 30) {
@@ -14,16 +15,18 @@ export function getActivityHeatmapData(daysCount = 30) {
 
   (state.workouts || []).forEach(w => {
     if (w.logged_at) {
-      const dStr = new Date(w.logged_at).toISOString().split('T')[0];
-      durationByDate[dStr] = (durationByDate[dStr] || 0) + (w.duration_minutes || 0);
-      countByDate[dStr] = (countByDate[dStr] || 0) + 1;
+      const dStr = getLocalDateString(w.logged_at);
+      if (dStr) {
+        durationByDate[dStr] = (durationByDate[dStr] || 0) + (w.duration_minutes || 0);
+        countByDate[dStr] = (countByDate[dStr] || 0) + 1;
+      }
     }
   });
 
   for (let i = daysCount - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(today.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(d);
     const duration = durationByDate[dateStr] || 0;
     const count = countByDate[dateStr] || 0;
 

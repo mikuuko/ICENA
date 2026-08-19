@@ -16,8 +16,21 @@ const INTENSITY_OPTIONS = [
   { id: 'high', name: 'หนักมาก (2.75x)', color: '#F44336' }
 ];
 
+function toDatetimeLocalValue(date) {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 export function renderWorkoutSection(container, onUpdateCallback) {
   let selectedFile = null;
+  const now = new Date();
+  const nowStr = toDatetimeLocalValue(now);
 
   container.innerHTML = `
     <div class="workout-section" style="margin-top: 20px; text-align: left;">
@@ -43,6 +56,31 @@ export function renderWorkoutSection(container, onUpdateCallback) {
         </div>
 
         <form id="workout-form">
+          <!-- Date / Time Selection -->
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 0.9rem; font-weight: bold; color: #555; margin-bottom: 6px;">
+              📅 วันที่ทำกิจกรรม
+            </label>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <button type="button" id="btn-date-today" class="workout-date-btn" style="flex: 1; padding: 7px 8px; border-radius: 10px; border: 1.5px solid #FF9EAA; background: #FF9EAA; color: white; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                🌟 วันนี้
+              </button>
+              <button type="button" id="btn-date-yesterday" class="workout-date-btn" style="flex: 1; padding: 7px 8px; border-radius: 10px; border: 1.5px solid #FFC0CB; background: white; color: #666; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                ⏪ เมื่อวาน
+              </button>
+              <button type="button" id="btn-date-custom" class="workout-date-btn" style="flex: 1; padding: 7px 8px; border-radius: 10px; border: 1.5px solid #FFC0CB; background: white; color: #666; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                🗓️ กำหนดเอง
+              </button>
+            </div>
+
+            <div id="workout-custom-date-container" style="display: none; margin-top: 6px;">
+              <input type="datetime-local" id="workout_datetime" value="${nowStr}" max="${nowStr}" style="width: 100%; padding: 9px 12px; border: 1.5px solid #FFC0CB; border-radius: 12px; font-size: 0.9rem; box-sizing: border-box; background: white;">
+            </div>
+            <div id="workout-date-badge" style="display: none; font-size: 0.8rem; color: #E91E63; background: #FFF0F3; border: 1px solid #FFD1DC; padding: 5px 10px; border-radius: 8px; margin-top: 6px;">
+              ⚡ <span id="workout-date-badge-text">บันทึกย้อนหลัง (ระบบจะคำนวณ Streak ย้อนหลังให้อัตโนมัติ ✨)</span>
+            </div>
+          </div>
+
           <!-- Exercise Type -->
           <div style="margin-bottom: 15px;">
             <label style="display: block; font-size: 0.9rem; font-weight: bold; color: #555; margin-bottom: 8px;">
@@ -136,6 +174,81 @@ export function renderWorkoutSection(container, onUpdateCallback) {
   updateRadioStyles();
   radioInputs.forEach(r => r.addEventListener('change', updateRadioStyles));
 
+  // Date Selector Handlers
+  const btnToday = container.querySelector('#btn-date-today');
+  const btnYesterday = container.querySelector('#btn-date-yesterday');
+  const btnCustom = container.querySelector('#btn-date-custom');
+  const customDateContainer = container.querySelector('#workout-custom-date-container');
+  const datetimeInput = container.querySelector('#workout_datetime');
+  const dateBadge = container.querySelector('#workout-date-badge');
+  const dateBadgeText = container.querySelector('#workout-date-badge-text');
+
+  const updateDateButtonsStyle = (activeBtn) => {
+    [btnToday, btnYesterday, btnCustom].forEach(btn => {
+      if (!btn) return;
+      if (btn === activeBtn) {
+        btn.style.background = '#FF9EAA';
+        btn.style.color = 'white';
+        btn.style.borderColor = '#FF9EAA';
+      } else {
+        btn.style.background = 'white';
+        btn.style.color = '#666';
+        btn.style.borderColor = '#FFC0CB';
+      }
+    });
+  };
+
+  const checkAndShowDateBadge = (selectedDate) => {
+    const today = new Date();
+    const isToday = selectedDate.toDateString() === today.toDateString();
+    
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = selectedDate.toDateString() === yesterday.toDateString();
+
+    if (isToday) {
+      dateBadge.style.display = 'none';
+    } else if (isYesterday) {
+      dateBadgeText.innerText = 'บันทึกย้อนหลังของเมื่อวาน (ระบบจะคำนวณ Streak ย้อนหลังให้อัตโนมัติ ✨)';
+      dateBadge.style.display = 'block';
+    } else {
+      const dateStr = selectedDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+      dateBadgeText.innerText = `บันทึกย้อนหลังวันที่ ${dateStr} (ระบบจะคำนวณ Streak ย้อนหลังให้อัตโนมัติ ✨)`;
+      dateBadge.style.display = 'block';
+    }
+  };
+
+  btnToday?.addEventListener('click', () => {
+    updateDateButtonsStyle(btnToday);
+    customDateContainer.style.display = 'none';
+    const currentNow = new Date();
+    datetimeInput.value = toDatetimeLocalValue(currentNow);
+    dateBadge.style.display = 'none';
+  });
+
+  btnYesterday?.addEventListener('click', () => {
+    updateDateButtonsStyle(btnYesterday);
+    customDateContainer.style.display = 'none';
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    datetimeInput.value = toDatetimeLocalValue(yesterday);
+    checkAndShowDateBadge(yesterday);
+  });
+
+  btnCustom?.addEventListener('click', () => {
+    updateDateButtonsStyle(btnCustom);
+    customDateContainer.style.display = 'block';
+    const curDate = new Date(datetimeInput.value || Date.now());
+    checkAndShowDateBadge(curDate);
+  });
+
+  datetimeInput?.addEventListener('change', () => {
+    const curDate = new Date(datetimeInput.value);
+    if (!isNaN(curDate.getTime())) {
+      checkAndShowDateBadge(curDate);
+    }
+  });
+
   // Photo Selector Handlers
   const photoInput = container.querySelector('#workout-photo-input');
   const btnSelectPhoto = container.querySelector('#btn-select-workout-photo');
@@ -196,13 +309,15 @@ export function renderWorkoutSection(container, onUpdateCallback) {
     const duration = container.querySelector('#workout_duration')?.value;
     const intensity = container.querySelector('#workout_intensity')?.value;
     const note = container.querySelector('#workout_note')?.value;
+    const loggedAtVal = datetimeInput?.value;
 
     const res = await logWorkout({
       type: selectedType,
       duration_minutes: duration,
       intensity,
       note,
-      image_file: selectedFile
+      image_file: selectedFile,
+      logged_at: loggedAtVal ? new Date(loggedAtVal).toISOString() : null
     });
 
     submitBtn.disabled = false;

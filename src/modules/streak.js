@@ -16,13 +16,23 @@ export const QUEST_DEFINITIONS = [
   { id: 'weight_2', title: 'เวทเทรนนิ่ง 2 ครั้งในสัปดาห์นี้', emoji: '🏋️‍♂️', goal: 2, reward: 100 }
 ];
 
+// Helper to get Local Date String (YYYY-MM-DD)
+export function getLocalDateString(d = new Date()) {
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  if (isNaN(dateObj.getTime())) return '';
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Helper to get Monday of the current week (YYYY-MM-DD)
 function getWeekStartDate(date = new Date()) {
   const d = new Date(date);
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(d.setDate(diff));
-  return monday.toISOString().split('T')[0];
+  return getLocalDateString(monday);
 }
 
 // Recalculate Streak from workouts list
@@ -34,35 +44,34 @@ export async function recalcStreak() {
     const dateSet = new Set();
     state.workouts.forEach(w => {
       if (w.logged_at) {
-        const dStr = new Date(w.logged_at).toISOString().split('T')[0];
-        dateSet.add(dStr);
+        const dStr = getLocalDateString(w.logged_at);
+        if (dStr) dateSet.add(dStr);
       }
     });
 
-    const dates = Array.from(dateSet).sort().reverse(); // e.g. ['2026-08-09', '2026-08-08']
+    const dates = Array.from(dateSet).sort().reverse(); // e.g. ['2026-08-19', '2026-08-18']
 
     if (dates.length === 0) {
       state.gameState.streak = 0;
       return 0;
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString(new Date());
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+    const yesterdayStr = getLocalDateString(yesterdayDate);
 
     // Check if streak is active (workout done today or yesterday)
-    let currentCheck = new Date();
     if (!dateSet.has(todayStr) && !dateSet.has(yesterdayStr)) {
       // Streak broken
       state.gameState.streak = 0;
     } else {
       let streak = 0;
-      // Start counting back from the most recent workout date
+      // Start counting back from the most recent active check date
       let checkDate = dateSet.has(todayStr) ? new Date() : yesterdayDate;
 
       while (true) {
-        const checkStr = checkDate.toISOString().split('T')[0];
+        const checkStr = getLocalDateString(checkDate);
         if (dateSet.has(checkStr)) {
           streak++;
           checkDate.setDate(checkDate.getDate() - 1);

@@ -98,7 +98,7 @@ export async function loadDietLogs() {
 }
 
 // Log diet record
-export async function logDiet({ meal_type, food_name, calories = 0, score = 'B', image_file = null, ai_analysis = {} }) {
+export async function logDiet({ meal_type, food_name, calories = 0, score = 'B', image_file = null, ai_analysis = {}, logged_at = null }) {
   if (!state.user) {
     showToast('กรุณาเข้าสู่ระบบก่อนบันทึกมื้ออาหารค่ะ', 'warning');
     return { success: false, error: 'Not authenticated' };
@@ -114,17 +114,26 @@ export async function logDiet({ meal_type, food_name, calories = 0, score = 'B',
       }
     }
 
+    const insertPayload = {
+      user_id: state.user.id,
+      meal_type,
+      food_name,
+      calories: parseInt(calories, 10) || 0,
+      score,
+      image_url,
+      ai_analysis
+    };
+
+    if (logged_at) {
+      const parsedDate = new Date(logged_at);
+      if (!isNaN(parsedDate.getTime())) {
+        insertPayload.logged_at = parsedDate.toISOString();
+      }
+    }
+
     const { data: newLog, error } = await supabase
       .from('diet_logs')
-      .insert({
-        user_id: state.user.id,
-        meal_type,
-        food_name,
-        calories: parseInt(calories, 10) || 0,
-        score,
-        image_url,
-        ai_analysis
-      })
+      .insert(insertPayload)
       .select()
       .single();
 

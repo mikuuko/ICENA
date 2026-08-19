@@ -108,7 +108,8 @@ export async function logSleep({ sleep_time, wake_time, quality = 'good', raw_te
         duration_hours: durationHours,
         quality,
         raw_text,
-        image_url
+        image_url,
+        logged_at: end.toISOString()
       })
       .select()
       .single();
