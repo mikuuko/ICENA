@@ -85,6 +85,37 @@ export async function loadAppData(userId) {
     // Process Workouts
     state.workouts = workoutsRes.data || [];
 
+    // --- TEMPORARY FIX FOR LATE NIGHT WORKOUTS ---
+    let fixedAny = false;
+    for (const w of state.workouts) {
+      const d = new Date(w.logged_at);
+      // Fix 12/8/2026 00:33 -> 11/8/2026 23:33
+      if (d.getFullYear() === 2026 && d.getMonth() === 7 && d.getDate() === 12 && d.getHours() === 0 && d.getMinutes() === 33) {
+        const newD = new Date(d);
+        newD.setDate(11);
+        newD.setHours(23);
+        await supabase.from('workouts').update({ logged_at: newD.toISOString() }).eq('id', w.id);
+        fixedAny = true;
+      }
+      // Fix 15/8/2026 00:05 -> 14/8/2026 23:05
+      if (d.getFullYear() === 2026 && d.getMonth() === 7 && d.getDate() === 15 && d.getHours() === 0 && d.getMinutes() === 5) {
+        const newD = new Date(d);
+        newD.setDate(14);
+        newD.setHours(23);
+        await supabase.from('workouts').update({ logged_at: newD.toISOString() }).eq('id', w.id);
+        fixedAny = true;
+      }
+    }
+    
+    if (fixedAny) {
+      // Reload workouts and recalculate streak after fix
+      const updatedWorkouts = await supabase.from('workouts').select('*').eq('user_id', userId).order('logged_at', { ascending: false });
+      state.workouts = updatedWorkouts.data || [];
+      const { recalcStreak } = await import('../modules/streak.js');
+      await recalcStreak();
+    }
+    // ---------------------------------------------
+
     // Process Diet Logs
     state.dietLogs = dietRes.data || [];
 
