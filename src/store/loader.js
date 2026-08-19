@@ -7,7 +7,11 @@ export function getWeekStartDate(date = new Date()) {
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(d.setDate(diff));
-  return monday.toISOString().split('T')[0];
+  
+  const year = monday.getFullYear();
+  const month = String(monday.getMonth() + 1).padStart(2, '0');
+  const dNum = String(monday.getDate()).padStart(2, '0');
+  return `${year}-${month}-${dNum}`;
 }
 
 // Load all application data for logged in user into state

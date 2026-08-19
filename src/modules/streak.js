@@ -56,8 +56,11 @@ export async function recalcStreak() {
       return 0;
     }
 
-    const todayStr = getLocalDateString(new Date());
-    const yesterdayDate = new Date();
+    const todayDate = new Date();
+    todayDate.setHours(12, 0, 0, 0); // Noon avoids DST edge cases
+    const todayStr = getLocalDateString(todayDate);
+    
+    const yesterdayDate = new Date(todayDate);
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterdayStr = getLocalDateString(yesterdayDate);
 
@@ -68,7 +71,7 @@ export async function recalcStreak() {
     } else {
       let streak = 0;
       // Start counting back from the most recent active check date
-      let checkDate = dateSet.has(todayStr) ? new Date() : yesterdayDate;
+      let checkDate = dateSet.has(todayStr) ? new Date(todayDate) : new Date(yesterdayDate);
 
       while (true) {
         const checkStr = getLocalDateString(checkDate);
@@ -85,12 +88,12 @@ export async function recalcStreak() {
     // Sync streak to database
     await supabase
       .from('user_game_state')
-      .upsert({
-        user_id: state.user.id,
+      .update({
         streak: state.gameState.streak,
         last_workout_date: dates[0],
         updated_at: new Date()
-      });
+      })
+      .eq('user_id', state.user.id);
 
     return state.gameState.streak;
   } catch (err) {

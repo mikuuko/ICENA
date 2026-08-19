@@ -125,6 +125,10 @@ export async function logWorkout({ type, duration_minutes, intensity, note = '',
       return { success: false, error: insertErr };
     }
 
+    // Refresh workouts and recalculate streak FIRST so RPC uses the updated streak multiplier!
+    await loadWorkouts();
+    await recalcStreak();
+
     // 2. Award Coins via RPC ONLY (Rule #7 & Anti-pattern mitigation)
     const { data: coinRes, error: rpcErr } = await supabase.rpc('award_workout_coins', {
       p_workout_id: newWorkout.id
@@ -144,9 +148,7 @@ export async function logWorkout({ type, duration_minutes, intensity, note = '',
       );
     }
 
-    // 3. Refresh Workouts State & Trigger Gamification Updates
-    await loadWorkouts();
-    await recalcStreak();
+    // 3. Trigger Gamification Updates
     await checkAndIssueCoupon(duration);
     await checkAchievements();
 
